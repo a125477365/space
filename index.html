@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>空间站实时追踪 · LIVE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#02060f;
+  --panel:rgba(8,16,32,.78);
+  --panel-2:rgba(14,24,44,.82);
+  --line:rgba(120,180,235,.16);
+  --line-strong:rgba(140,200,255,.32);
+  --text:#eaf3ff;
+  --dim:#9bb0d4;
+  --iss:#7fd8ff;   /* ISS 海洋蓝青 */
+  --tg:#ffb24a;    /* 天宫 太阳橙 */
+  --live:#57f7a8;
+  --warn:#ffd166;
+  --land:#3a6b8a;  /* 真实地球配色:海陆适配 */
+  --num:'Rajdhani',-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
+  --sans:-apple-system,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  background:#01030a;
+  color:var(--text);
+  font-family:var(--sans);
+  display:flex;justify-content:center;align-items:center;
+  overflow:hidden;
+}
+/* 竖屏 9:16 舞台:手机上占满,宽屏(OBS/桌面)下按高度居中裁成 9:16 */
+#stage{
+  width:min(100vw,calc(100dvh * 9 / 16));
+  height:100dvh;
+  container-type:size;
+  position:relative;
+  background:var(--bg);
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+/* 星空底 */
+#stage::before{
+  content:'';position:absolute;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    radial-gradient(1px 1px at 12% 18%,rgba(255,255,255,.7),transparent 100%),
+    radial-gradient(1px 1px at 68% 6%,rgba(255,255,255,.5),transparent 100%),
+    radial-gradient(1.5px 1.5px at 84% 32%,rgba(180,210,255,.6),transparent 100%),
+    radial-gradient(1px 1px at 30% 44%,rgba(255,255,255,.4),transparent 100%),
+    radial-gradient(1px 1px at 55% 71%,rgba(255,255,255,.45),transparent 100%),
+    radial-gradient(1.5px 1.5px at 8% 82%,rgba(180,210,255,.5),transparent 100%),
+    radial-gradient(1px 1px at 91% 88%,rgba(255,255,255,.5),transparent 100%),
+    radial-gradient(1px 1px at 42% 92%,rgba(255,255,255,.35),transparent 100%);
+}
+#stage>*{position:relative;z-index:1}
+
+/* ── 顶栏 ─────────────────────────── */
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:1.6cqh 3.4cqw 1.2cqh;
+  border-bottom:1px solid var(--line);
+  flex:0 0 auto;
+}
+.brand{display:flex;align-items:center;gap:2.4cqw}
+.live-dot{
+  width:2.6cqw;height:2.6cqw;border-radius:50%;
+  background:var(--live);box-shadow:0 0 2cqw var(--live);
+  animation:blink 1.6s ease-in-out infinite;
+}
+@keyframes blink{50%{opacity:.25}}
+h1{font-size:4.4cqw;font-weight:700;letter-spacing:.14em}
+h1 small{
+  display:block;font-family:var(--num);font-weight:600;font-size:2.5cqw;
+  letter-spacing:.34em;color:var(--dim);margin-top:.3cqh;
+}
+.clocks{text-align:right;font-family:var(--num);line-height:1.25}
+.clocks b{font-size:3.6cqw;font-weight:700;font-variant-numeric:tabular-nums}
+.clocks span{font-size:2.4cqw;color:var(--dim);letter-spacing:.12em;margin-right:1.2cqw}
+
+/* ── 地图 ─────────────────────────── */
+#mapWrap{
+  position:relative;flex:0 0 auto;
+  height:50cqw; /* 等距圆柱 2:1 */
+  border-bottom:1px solid var(--line);
+  background:#040a1c;
+}
+#map{position:absolute;inset:0;width:100%;height:100%;display:block}
+.map-hud{
+  position:absolute;top:1.4cqw;right:1.6cqw;
+  background:rgba(4,9,24,.78);
+  border:1px solid var(--line);
+  border-radius:1.6cqw;
+  padding:1.4cqw 2cqw;
+  font-family:var(--num);font-size:2.7cqw;font-weight:600;
+  font-variant-numeric:tabular-nums;line-height:1.65;
+  backdrop-filter:blur(4px);
+}
+.hud-row{display:flex;align-items:center;gap:1.4cqw;white-space:nowrap}
+.hud-row i{width:1.8cqw;height:1.8cqw;border-radius:50%;background:var(--c);box-shadow:0 0 1.4cqw var(--c)}
+.hud-row em{font-style:normal;color:var(--text);min-width:8cqw}
+.hud-row span{color:var(--dim)}
+.map-legend{
+  position:absolute;left:1.6cqw;bottom:1.4cqw;
+  font-size:2.3cqw;color:var(--dim);letter-spacing:.06em;
+  background:rgba(4,9,24,.6);border-radius:1.2cqw;padding:.8cqw 1.6cqw;
+}
+
+/* ── 空间站卡片 ────────────────────── */
+#cards{flex:1 1 0;min-height:0;display:flex;flex-direction:column;gap:1.2cqh;padding:1.2cqh 2.6cqw}
+.scard{
+  flex:1 1 0;min-height:0;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-left:3px solid var(--c);
+  border-radius:2cqw;
+  padding:.9cqh 2.8cqw;
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+.scard-head{display:flex;align-items:baseline;gap:2cqw;flex:0 0 auto}
+.scard-head h2{font-size:3.6cqw;font-weight:700;letter-spacing:.06em}
+.scard-head small{font-family:var(--num);font-weight:600;font-size:2.4cqw;color:var(--dim);letter-spacing:.1em}
+.badge{
+  margin-left:auto;font-size:2.3cqw;letter-spacing:.2em;
+  color:var(--c);border:1px solid var(--c);
+  border-radius:99px;padding:.3cqh 2cqw;
+}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1.4cqw;margin-top:.6cqh;flex:0 0 auto}
+.stat{background:rgba(255,255,255,.04);border-radius:1.6cqw;padding:.45cqh 1.2cqw;text-align:center}
+.stat label{display:block;font-size:2.2cqw;color:var(--dim);letter-spacing:.18em}
+.stat b{
+  display:block;font-family:var(--num);font-weight:700;font-size:3.7cqw;
+  font-variant-numeric:tabular-nums;color:var(--c);margin-top:.15cqh;white-space:nowrap;
+}
+.stat b u{text-decoration:none;font-size:2.3cqw;color:var(--dim);font-weight:600}
+.meta-line{
+  margin-top:.5cqh;font-family:var(--num);font-weight:600;
+  font-size:2.4cqw;color:var(--dim);letter-spacing:.05em;flex:0 0 auto;
+  display:flex;align-items:center;gap:1.6cqw;white-space:nowrap;overflow:hidden;
+}
+.meta-line .tle-warn{color:var(--warn)}
+.crew{
+  flex:1 1 0;min-height:0;margin-top:.7cqh;
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(14cqw,1fr));
+  grid-auto-rows:min-content;
+  gap:1.4cqw 1.2cqw;
+  align-content:start;
+  overflow-y:auto;overflow-x:hidden;
+  padding-right:1cqw;
+  scrollbar-width:thin;
+  scrollbar-color:var(--line-strong) transparent;
+}
+.crew::-webkit-scrollbar{width:4px}
+.crew::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:4px}
+.crew-loading,.crew-error{font-size:2.8cqw;color:var(--dim);align-self:center;grid-column:1/-1}
+.crew-error{color:var(--warn)}
+.astro{width:100%;text-align:center;min-width:0}
+.avatar{
+  width:9.6cqw;height:9.6cqw;margin:0 auto;border-radius:50%;
+  border:1.5px solid var(--c);overflow:hidden;
+  background:rgba(255,255,255,.06);
+  display:flex;align-items:center;justify-content:center;
+}
+.avatar img{width:100%;height:100%;object-fit:cover;object-position:center top}
+.avatar .initials{font-family:var(--num);font-weight:700;font-size:3.2cqw;color:var(--c)}
+.aname{font-size:2.4cqw;margin-top:.35cqh;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.adays{font-family:var(--num);font-weight:600;font-size:2.2cqw;color:var(--dim);margin-top:.1cqh;white-space:nowrap}
+
+/* ── 空地通信 ─────────────────────── */
+#comm{
+  flex:0 0 auto;
+  margin:0 2.6cqw 1.2cqh;
+  background:var(--panel);border:1px solid var(--line);border-radius:2cqw;
+  padding:1cqh 2.8cqw;
+}
+.comm-title{font-size:2.6cqw;color:var(--dim);letter-spacing:.3em;margin-bottom:.6cqh}
+.comm-row{display:flex;align-items:center;gap:2cqw;font-size:2.9cqw;line-height:1.5;padding:.25cqh 0}
+.dot{flex:0 0 auto;width:2.2cqw;height:2.2cqw;border-radius:50%;background:#5a6a8f}
+.dot.on{background:var(--live);box-shadow:0 0 1.8cqw var(--live);animation:blink 1.6s infinite}
+.dot.off{background:#ff5470;box-shadow:0 0 1.8cqw #ff5470}
+.comm-row b{font-weight:600}
+.comm-row .sub{color:var(--dim);font-size:2.6cqw}
+.comm-row button{
+  margin-left:auto;flex:0 0 auto;
+  font-family:var(--sans);font-size:2.6cqw;color:var(--iss);
+  background:transparent;border:1px solid var(--iss);border-radius:99px;
+  padding:.4cqh 2.4cqw;cursor:pointer;
+}
+.comm-row button:focus-visible{outline:2px solid var(--live);outline-offset:2px}
+#commLog{
+  margin-top:.5cqh;font-family:var(--num);font-weight:600;
+  font-size:2.4cqw;color:var(--dim);font-variant-numeric:tabular-nums;
+  max-height:6cqh;overflow:hidden;
+}
+#commLog div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 音频播放器悬浮、可拖拽、可缩放、可隐藏视频、可切形状(圆角短边/矩形/圆形) */
+#audioBox{
+  position:fixed;
+  width:44cqw;
+  min-width:12cqw;
+  max-width:92cqw;
+  aspect-ratio:16/9;
+  z-index:60;
+  background:#000;
+  border:1px solid var(--line-strong);
+  border-radius:var(--ab-radius,14px);
+  overflow:hidden;
+  box-shadow:0 14px 40px rgba(0,0,0,.7),0 2px 6px rgba(0,0,0,.5);
+  resize:both;
+  display:flex;flex-direction:column;
+  touch-action:none;
+}
+#audioBox .ab-frame{
+  flex:1 1 auto;
+  min-height:0;
+  position:relative;
+}
+#audioBox iframe{
+  position:absolute;inset:0;
+  width:100%;height:100%;
+  border:0;display:block;
+}
+#audioBox .ab-frame.audio-only iframe{
+  height:60px;            /* YouTube 仅占底部音轨条,看不到视频画面 */
+  bottom:auto;top:auto;
+  pointer-events:none;
+}
+#audioBox .ab-frame.audio-only::after{
+  content:'🔊 仅音频 Listening…';
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--iss);
+  background:linear-gradient(180deg,rgba(8,16,32,.92),rgba(2,6,15,.96));
+  font-family:var(--num);font-weight:600;font-size:2.6cqw;
+  letter-spacing:.18em;
+}
+#audioBox .ab-frame.audio-only .fallback{display:none}
+#audioBox .ab-cover{
+  position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(8,16,32,.55),rgba(2,6,15,.85));
+  color:var(--text);
+  display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1cqw;
+  font-family:var(--num);font-size:2.3cqw;letter-spacing:.1em;
+}
+#audioBox .fallback{
+  position:absolute;left:0;right:0;bottom:0;
+  font-size:2cqw;padding:.6cqh 1.8cqw;color:var(--dim);background:rgba(2,6,15,.8);
+  display:flex;gap:1.4cqw;flex-wrap:wrap;align-items:center;
+}
+#audioBox .fallback a{color:var(--iss);text-decoration:none}
+.ab-bar{
+  flex:0 0 auto;
+  display:flex;align-items:center;gap:1.4cqw;
+  padding:.45cqh 1.4cqw;
+  background:rgba(2,6,15,.94);
+  border-top:1px solid var(--line);
+  font-family:var(--num);font-size:2.2cqw;color:var(--dim);
+  cursor:grab;user-select:none;
+}
+.ab-bar:active{cursor:grabbing}
+.ab-bar .ab-title{letter-spacing:.18em}
+.ab-tools{margin-left:auto;display:flex;gap:1.2cqw}
+.ab-btn{
+  font-family:var(--sans);font-size:2.1cqw;
+  color:var(--text);
+  background:rgba(255,255,255,.06);
+  border:1px solid var(--line-strong);
+  border-radius:6px;
+  padding:.2cqh 1.4cqw;cursor:pointer;
+  letter-spacing:.05em;
+}
+.ab-btn:hover{background:rgba(120,200,255,.16);color:var(--iss)}
+.ab-btn.on{background:var(--iss);color:#02060f;border-color:var(--iss)}
+.ab-resize{
+  position:absolute;right:0;bottom:22cqh;background:transparent;
+  width:18px;height:18px;cursor:nwse-resize;z-index:2;
+  border-right:2px solid var(--iss);border-bottom:2px solid var(--iss);
+  border-bottom-right-radius:6px;opacity:.7;
+}
+#abMinimize,#abMaximize{display:inline-flex}
+[hidden]{display:none!important}
+
+/* ── 底部滚动条 ────────────────────── */
+#ticker{
+  flex:0 0 auto;border-top:1px solid var(--line);
+  padding:.7cqh 0;overflow:hidden;white-space:nowrap;
+  font-family:var(--num);font-weight:600;font-size:2.5cqw;color:var(--dim);
+  letter-spacing:.08em;
+}
+#ticker .inner{display:inline-block;padding-left:100%;animation:tick 36s linear infinite}
+@keyframes tick{to{transform:translateX(-100%)}}
+@media (prefers-reduced-motion:reduce){
+  #ticker .inner,.live-dot,.dot.on{animation:none}
+}
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <header>
+    <div class="brand">
+      <div class="live-dot"></div>
+      <h1>空间站实时追踪<small>ORBITAL TRACKER · LIVE</small></h1>
+    </div>
+    <div class="clocks">
+      <div><span>UTC</span><b id="clkUtc">--:--:--</b></div>
+      <div><span>北京</span><b id="clkBjt">--:--:--</b></div>
+    </div>
+  </header>
+
+  <div id="mapWrap">
+    <canvas id="map"></canvas>
+    <div class="map-hud">
+      <div class="hud-row" style="--c:var(--iss)"><i></i><em>ISS</em><span id="hud-iss">定位中…</span></div>
+      <div class="hud-row" style="--c:var(--tg)"><i></i><em>天宫</em><span id="hud-tg">定位中…</span></div>
+    </div>
+    <div class="map-legend">━ 轨道预测 90 min · 阴影为夜半球</div>
+  </div>
+
+  <div id="cards">
+    <section class="scard" id="card-iss" style="--c:var(--iss)">
+      <div class="scard-head">
+        <h2>国际空间站</h2><small>ISS · NORAD 25544</small>
+        <span class="badge">实时</span>
+      </div>
+      <div class="stats">
+        <div class="stat"><label>纬度</label><b id="iss-lat">--</b></div>
+        <div class="stat"><label>经度</label><b id="iss-lon">--</b></div>
+        <div class="stat"><label>高度</label><b id="iss-alt">--<u> km</u></b></div>
+        <div class="stat"><label>速度</label><b id="iss-vel">--<u> km/s</u></b></div>
+      </div>
+      <div class="meta-line" id="iss-meta">正在获取轨道数据…</div>
+      <div class="crew" id="iss-crew"><div class="crew-loading">正在获取乘组名单…</div></div>
+    </section>
+
+    <section class="scard" id="card-tg" style="--c:var(--tg)">
+      <div class="scard-head">
+        <h2>天宫 · 中国空间站</h2><small>CSS · NORAD 48274</small>
+        <span class="badge">实时</span>
+      </div>
+      <div class="stats">
+        <div class="stat"><label>纬度</label><b id="tg-lat">--</b></div>
+        <div class="stat"><label>经度</label><b id="tg-lon">--</b></div>
+        <div class="stat"><label>高度</label><b id="tg-alt">--<u> km</u></b></div>
+        <div class="stat"><label>速度</label><b id="tg-vel">--<u> km/s</u></b></div>
+      </div>
+      <div class="meta-line" id="tg-meta">正在获取轨道数据…</div>
+      <div class="crew" id="tg-crew"><div class="crew-loading">正在获取乘组名单…</div></div>
+    </section>
+  </div>
+
+  <div id="comm">
+    <div class="comm-title">空地通信 GROUND LINK</div>
+    <div class="comm-row">
+      <span class="dot" id="aosDot"></span>
+      <b>ISS 测控信号</b><span class="sub" id="aosText">连接遥测通道…</span>
+      <button id="audioBtn">▶ 空地通话音频</button>
+    </div>
+    <div class="comm-row">
+      <span class="dot"></span>
+      <b>天宫 空地通话</b><span class="sub">暂无公开实时接口 · 可关注中国载人航天官方直播</span>
+    </div>
+    <div id="commLog"></div>
+    <div id="audioBox" hidden aria-hidden="true">
+      <div class="ab-bar" id="abBar">
+        <span class="ab-title">🔊 NASA ISS · SPACE-TO-GROUND</span>
+        <div class="ab-tools">
+          <button class="ab-btn" id="abAudioOnly" type="button" title="仅音频:隐藏 YouTube 视频,只听通话音">仅音频</button>
+          <button class="ab-btn" id="abShape"     type="button" title="切换形状(圆角/方形/圆形)">形状</button>
+          <button class="ab-btn" id="abMinimize"  type="button" title="收起到右侧">收起</button>
+          <button class="ab-btn" id="abClose"     type="button" title="关闭">✕</button>
+        </div>
+      </div>
+      <div class="ab-frame" id="abFrame"></div>
+      <span class="ab-resize" id="abResize" title="拖拽调整大小"></span>
+    </div>
+    <button id="abRestore" hidden aria-hidden="true" type="button"
+      title="恢复音频窗口"
+      style="position:fixed;right:14px;bottom:14px;z-index:61;
+        font-family:var(--num);font-size:2.4cqw;color:#02060f;background:var(--iss);
+        border:0;border-radius:24px;padding:.5cqh 2cqw;cursor:pointer;
+        box-shadow:0 4px 14px rgba(0,0,0,.55);letter-spacing:.12em;">🔊 恢复</button>
+  </div>
+
+  <div id="ticker"><span class="inner" id="tickerText">正在初始化轨道解算引擎…</span></div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/satellite.js@4.1.4/dist/satellite.min.js"></script>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const RAD=Math.PI/180;
+
+/* ══ 空间站定义 ══════════════════════════ */
+const STATIONS={
+  iss:{key:'iss',label:'ISS',cat:25544,color:'#5bd8ff',satrec:null,geo:null,track:[],tleSrc:'',tleAge:0},
+  tg :{key:'tg', label:'天宫',cat:48274,color:'#ff7a52',satrec:null,geo:null,track:[],tleSrc:'',tleAge:0}
+};
+/* 离线兜底 TLE(仅在所有数据源不可达时使用,会标注"离线TLE") */
+const FALLBACK_TLE={
+  25544:['1 25544U 98067A   26019.50000000  .00016717  00000-0  30000-3 0  9990',
+         '2 25544  51.6400 200.0000 0004000  90.0000 270.0000 15.50000000493007'],
+  48274:['1 48274U 21035A   26019.50000000  .00020000  00000-0  25000-3 0  9991',
+         '2 48274  41.4700 100.0000 0004000  90.0000 270.0000 15.62000000267009']
+};
+
+/* ══ TLE 获取(多级数据源) ═══════════════ */
+async function jfetch(url,asText){
+  const r=await fetch(url,{cache:'no-store'});
+  if(!r.ok) throw new Error(r.status);
+  return asText?r.text():r.json();
+}
+async function fetchTLE(cat){
+  try{
+    const t=await jfetch(`https://celestrak.org/NORAD/elements/gp.php?CATNR=${cat}&FORMAT=TLE`,true);
+    const L=t.trim().split(/\r?\n/).map(s=>s.trim());
+    const i=L.findIndex(s=>s.startsWith('1 '));
+    if(i>=0&&L[i+1]) return {l1:L[i],l2:L[i+1],src:'CelesTrak'};
+  }catch(e){}
+  try{
+    const j=await jfetch(`https://tle.ivanstanojevic.me/api/tle/${cat}`);
+    if(j.line1) return {l1:j.line1,l2:j.line2,src:'TLE-API'};
+  }catch(e){}
+  if(cat===25544){
+    try{
+      const j=await jfetch('https://api.wheretheiss.at/v1/satellites/25544/tles');
+      if(j.line1) return {l1:j.line1,l2:j.line2,src:'WhereTheISS'};
+    }catch(e){}
+  }
+  return {l1:FALLBACK_TLE[cat][0],l2:FALLBACK_TLE[cat][1],src:'offline'};
+}
+async function loadTLEs(){
+  await Promise.all(Object.values(STATIONS).map(async st=>{
+    const t=await fetchTLE(st.cat);
+    try{
+      st.satrec=satellite.twoline2satrec(t.l1,t.l2);
+      st.tleSrc=t.src;
+    }catch(e){console.error('TLE解析失败',st.label,e);}
+  }));
+  rebuildTracks();
+  updateTicker();
+}
+
+/* ══ SGP4 解算 ══════════════════════════ */
+function geoAt(st,date){
+  if(!st.satrec) return null;
+  try{
+    const pv=satellite.propagate(st.satrec,date);
+    if(!pv||!pv.position||typeof pv.position.x!=='number') return null;
+    const gmst=satellite.gstime(date);
+    const g=satellite.eciToGeodetic(pv.position,gmst);
+    const v=pv.velocity?Math.hypot(pv.velocity.x,pv.velocity.y,pv.velocity.z):0;
+    return {lat:satellite.degreesLat(g.latitude),lon:satellite.degreesLong(g.longitude),alt:g.height,vel:v};
+  }catch(e){return null;}
+}
+function tleAgeDays(st){
+  if(!st.satrec) return 99;
+  const nowJd=Date.now()/86400000+2440587.5;
+  return nowJd-(st.satrec.jdsatepoch||nowJd);
+}
+function rebuildTracks(){
+  const now=Date.now();
+  for(const st of Object.values(STATIONS)){
+    const pts=[];
+    for(let m=-12;m<=96;m+=1){
+      const g=geoAt(st,new Date(now+m*60000));
+      if(g) pts.push({lon:g.lon,lat:g.lat,future:m>0});
+    }
+    st.track=pts;
+    st.tleAge=tleAgeDays(st);
+  }
+}
+setInterval(rebuildTracks,20000);
+
+/* ══ 太阳直射点 & 晨昏线 ═════════════════ */
+function sunPos(date){
+  const n=date/86400000+2440587.5-2451545;
+  const L=(280.46+.9856474*n)%360;
+  const g=((357.528+.9856003*n)%360)*RAD;
+  const lam=(L+1.915*Math.sin(g)+.02*Math.sin(2*g))*RAD;
+  const obl=(23.439-4e-7*n)*RAD;
+  const dec=Math.asin(Math.sin(obl)*Math.sin(lam));
+  const ra=Math.atan2(Math.cos(obl)*Math.sin(lam),Math.cos(lam));
+  let gmst=(18.697374558+24.06570982441908*n)%24;
+  let lon=ra/RAD-gmst*15;
+  lon=((lon+540)%360)-180;
+  return {lat:dec/RAD,lon};
+}
+
+/* ══ 地图渲染 ═══════════════════════════
+   采用真实地球贴图:加载 NASA Blue Marble 等距圆柱投影 PNG,
+   支持 CORS 的 CDN 缓存,跨域使用 crossOrigin='anonymous'。
+   若贴图加载失败则回退到本文档内绘制的真实风格地图
+   (海洋深蓝渐变 + 真实海岸线 GeoJSON 着色 + 极地冰盖 + 经纬网)。 */
+const canvas=$('map'),ctx=canvas.getContext('2d');
+let W=0,H=0,DPR=1,worldGeo=null;
+const baseCv=document.createElement('canvas'),nightCv=document.createElement('canvas');
+const X=lon=>(lon+180)/360*W, Y=lat=>(90-lat)/180*H;
+
+const blueMarble=new Image();
+blueMarble.crossOrigin='anonymous';
+let bmLoaded=false,bmFailed=false;
+blueMarble.onload=()=>{bmLoaded=true;drawBase();};
+blueMarble.onerror=()=>{bmFailed=true;drawBase();console.warn('Blue Marble 贴图加载失败,回退到矢量绘制');};
+const BM_CANDIDATES=[
+  'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r160/examples/textures/planets/earth_atmos_2048.jpg',
+  'https://unpkg.com/three@0.160.0/examples/textures/planets/earth_atmos_2048.jpg',
+  'https://raw.githubusercontent.com/mrdoob/three.js/r160/examples/textures/planets/earth_atmos_2048.jpg'
+];
+function tryBM(i){
+  if(i>=BM_CANDIDATES.length){bmFailed=true;drawBase();return;}
+  blueMarble.src=BM_CANDIDATES[i];
+  blueMarble.onerror=()=>tryBM(i+1);
+}
+tryBM(0);
+
+async function loadWorld(){
+  try{
+    worldGeo=await jfetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json');
+  }catch(e){console.warn('世界地图数据获取失败,可降级仅有贴图/经纬网',e);}
+  drawBase();
+}
+function resize(){
+  DPR=Math.min(window.devicePixelRatio||1,2);
+  const r=canvas.getBoundingClientRect();
+  W=Math.round(r.width*DPR);H=Math.round(r.height*DPR);
+  canvas.width=W;canvas.height=H;
+  baseCv.width=W;baseCv.height=H;
+  nightCv.width=W;nightCv.height=H;
+  drawBase();drawNight();
+}
+
+/* 真实地球底图绘制:
+   优先绘制 NASA Blue Marble 等距圆柱贴图,
+   在贴图加载完成前后绘制经纬网以便降级使用。
+   叠加极地冰盖、陆地湖泊海岸线等不再额外绘制(贴图已包含)。 */
+function drawBase(){
+  const c=baseCv.getContext('2d');
+  c.clearRect(0,0,W,H);
+  /* 贴图优先 */
+  if(bmLoaded&&blueMarble.width>1){
+    c.drawImage(blueMarble,0,0,W,H);
+    /* 大气高光:边缘略增 */
+    const grd=c.createLinearGradient(0,0,0,H);
+    grd.addColorStop(0,'rgba(120,180,235,.18)');
+    grd.addColorStop(.5,'rgba(0,0,0,0)');
+    grd.addColorStop(1,'rgba(120,180,235,.18)');
+    c.fillStyle=grd;c.fillRect(0,0,W,H);
+    drawGrid(c,/*overlay*/true);     /* 轻量经纬网叠加在贴图右上 */
+    return;
+  }
+  /* 矢量回退:深蓝海洋 + 真实海岸线着色 */
+  const sea=c.createLinearGradient(0,0,0,H);
+  sea.addColorStop(0,'#0b1f3a');
+  sea.addColorStop(.5,'#08263d');
+  sea.addColorStop(1,'#051a30');
+  c.fillStyle=sea;c.fillRect(0,0,W,H);
+  drawGrid(c,false);
+  drawLand(c);
+  if(bmFailed===undefined||bmFailed===false){
+    /* 贴图还在加载中,.drawText 提示 */
+  }
+}
+function drawGrid(c,overlay){
+  c.strokeStyle=overlay?'rgba(150,190,235,.16)':'rgba(120,170,225,.18)';
+  c.lineWidth=1;
+  for(let lon=-150;lon<180;lon+=30){
+    c.beginPath();c.moveTo(X(lon),0);c.lineTo(X(lon),H);c.stroke();
+  }
+  for(let lat=-60;lat<90;lat+=30){
+    c.beginPath();c.moveTo(0,Y(lat));c.lineTo(W,Y(lat));c.stroke();
+  }
+  c.strokeStyle='rgba(180,220,255,.36)';
+  c.beginPath();c.moveTo(0,Y(0));c.lineTo(W,Y(0));c.stroke(); /* 赤道 */
+}
+/* 矢量回退:用真实风格着色大陆轮廓(纬度配色) */
+function latColor(lat){
+  const a=Math.abs(lat);
+  if(a>=75)return '#e8f1f7';        /* 极地冰盖:近白 */
+  if(a>=60)return '#cfd5d8';        /* 寒带:灰白 */
+  if(a>=42)return '#8fa68b';        /* 温带:暗绿 */
+  if(a>=23)return '#5e9b5a';        /* 亚热带:绿 */
+  if(a>=12)return '#c2b54a';        /* 热带草原:草黄 */
+  return '#a9953f';                 /* 沙漠:黄棕 */
+}
+function drawLand(c){
+  if(!worldGeo)return;
+  const ring=r=>{c.moveTo(X(r[0][0]),Y(r[0][1]));for(let i=1;i<r.length;i++)c.lineTo(X(r[i][0]),Y(r[i][1]));c.closePath();};
+  c.lineWidth=Math.max(.8,DPR*.6);
+  /* 先用平均纬度给整个国家上色 */
+  c.save();
+  for(const f of worldGeo.features){
+    const g=f.geometry;if(!g)continue;
+    let polys=[];
+    if(g.type==='Polygon')polys=[g.coordinates];
+    else if(g.type==='MultiPolygon')polys=g.coordinates;
+    /* 估算平均纬度 */
+    let latSum=0,cnt=0;
+    for(const p of polys)for(const r of p)for(const pt of r){latSum+=pt[1];cnt++;}
+    const latAvg=cnt?latSum/cnt:0;
+    c.fillStyle=latColor(latAvg);
+    c.strokeStyle='rgba(220,230,245,.45)';
+    c.beginPath();
+    for(const p of polys)for(const r of p)ring(r);
+    c.fill();c.stroke();
+  }
+  c.restore();
+}
+function drawNight(){
+  const c=nightCv.getContext('2d');
+  c.clearRect(0,0,W,H);
+  const s=sunPos(new Date());
+  const dec=Math.abs(s.lat)<.4?(s.lat<0?-.4:.4):s.lat; /* 避免除零 */
+  c.fillStyle='rgba(1,4,16,.52)';
+  c.beginPath();
+  for(let lon=-180;lon<=180;lon+=2){
+    const h=(lon-s.lon)*RAD;
+    const lat=Math.atan(-Math.cos(h)/Math.tan(dec*RAD))/RAD;
+    lon===-180?c.moveTo(X(lon),Y(lat)):c.lineTo(X(lon),Y(lat));
+  }
+  const poleY=dec>0?H:0; /* 太阳在北半球 → 夜区伸向南极 */
+  c.lineTo(W,poleY);c.lineTo(0,poleY);
+  c.closePath();c.fill();
+  /* 太阳直射点 */
+  const sx=X(s.lon),sy=Y(s.lat);
+  const gr=c.createRadialGradient(sx,sy,0,sx,sy,10*DPR);
+  gr.addColorStop(0,'rgba(255,225,140,.9)');gr.addColorStop(1,'rgba(255,225,140,0)');
+  c.fillStyle=gr;c.beginPath();c.arc(sx,sy,10*DPR,0,7);c.fill();
+}
+setInterval(drawNight,60000);
+
+/* 轨道线绘制:
+   将"过去(future=false)"和"未来(future=true)"分别拆成独立子段,
+   每个子段用一条独立 beginPath() 路径,避免 dash 相位在不同子路径
+   上跨段累积产生的视觉错位,从而让 ISS/CSS 当前位置前后的实线与
+   虚线交接点连续对接。跨子午线 ±180° 的边界天然切分,无需特判。 */
+function drawTrack(st){
+  if(!st.track||!st.track.length)return;
+  /* 预先把轨迹拆成「不跨子午线」的连续片段 */
+  const lonSegs=[];let cur=[];let prev=null;
+  for(const p of st.track){
+    if(prev&&Math.abs(p.lon-prev.lon)>180){
+      if(cur.length)lonSegs.push(cur);
+      cur=[p];prev=p;continue;
+    }
+    cur.push(p);prev=p;
+  }
+  if(cur.length)lonSegs.push(cur);
+  /* 再把每个 lonSeg 按 future 拆成精细子段 */
+  const paths={past:[],future:[]};
+  for(const seg of lonSegs){
+    let buf=[];let kind=null;
+    for(const p of seg){
+      const k=p.future?'future':'past';
+      if(kind!==null&&k!==kind){
+        if(buf.length>1)paths[kind].push(buf);
+        buf=[];kind=k;
+      }
+      buf.push(p);kind=k;
+    }
+    if(buf.length>1)paths[kind].push(buf);
+  }
+  /* 绘制 past (虚线) */
+  ctx.strokeStyle=st.color;
+  ctx.globalAlpha=.35;
+  ctx.lineWidth=1.3*DPR;
+  ctx.setLineDash([3*DPR,4*DPR]);
+  for(const seg of paths.past){
+    ctx.beginPath();
+    seg.forEach((p,i)=>{const x=X(p.lon),y=Y(p.lat);i?ctx.lineTo(x,y):ctx.moveTo(x,y);});
+    ctx.stroke();
+  }
+  /* 绘制 future (实线) */
+  ctx.globalAlpha=.9;
+  ctx.lineWidth=1.8*DPR;
+  ctx.setLineDash([]);
+  for(const seg of paths.future){
+    ctx.beginPath();
+    seg.forEach((p,i)=>{const x=X(p.lon),y=Y(p.lat);i?ctx.lineTo(x,y):ctx.moveTo(x,y);});
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);ctx.globalAlpha=1;
+}
+/* 空间站标志符号:用真实外形替代小亮点
+   ISS:桁架+四对太阳能板+中央加压舱+散热板
+   CSS (天宫):T 字主体+三对太阳能板+附加舱
+   形状保持以 (x,y) 为中心,与速度方向无关的简化正视图。 */
+function stationIcon(st,x,y,scale){
+  const s=scale*DPR;
+  ctx.save();
+  ctx.translate(x,y);
+  if(st.key==='iss'){
+    /* 桁架主梁(横向) */
+    ctx.fillStyle='#cdd6e0';
+    ctx.fillRect(-2.4*s,-0.35*s,4.8*s,0.7*s);
+    /* 居中加压舱 */
+    ctx.fillStyle='#e3eaf2';
+    ctx.fillRect(-0.7*s,-0.6*s,1.4*s,1.2*s);
+    /* 四对太阳能板(两两对称) */
+    ctx.fillStyle='#1b2b4a';
+    for(const sx of [-1,1]){
+      /* 左/右两块 */
+      for(const ox of [-2.0,-1.2,1.2,2.0]){
+        const px=ox*s;
+        ctx.fillRect(px-0.36*s,-1.8*s,0.72*s,1.5*s);
+        ctx.fillRect(px-0.36*s, 0.3*s,0.72*s,1.5*s);
+        /* 中央杆 */
+        ctx.fillStyle='#3d5278';
+        ctx.fillRect(px-0.04*s,-1.8*s,0.08*s,3.6*s);
+        ctx.fillStyle='#1b2b4a';
+      }
+      void sx;
+    }
+    /* 散热板(琥珀色细条) */
+    ctx.fillStyle='#7fd8ff';
+    ctx.fillRect(-2.4*s,-0.1*s,4.8*s,0.2*s);
+  }else if(st.key==='tg'){
+    /* 天宫:核心舱居中+两侧节点舱,顶部对日翼 */
+    /* 核心舱 */
+    ctx.fillStyle='#d8e0ea';
+    ctx.fillRect(-0.55*s,-0.55*s,1.1*s,1.1*s);
+    /* 左右实验舱(天和二侧) */
+    ctx.fillStyle='#c5cdd6';
+    ctx.fillRect(-1.6*s,-0.35*s,1.0*s,0.7*s);
+    ctx.fillRect( 0.6*s,-0.35*s,1.0*s,0.7*s);
+    /* 对接舱(顶部小段) */
+    ctx.fillStyle='#a9b4be';
+    ctx.fillRect(-0.18*s,-1.1*s,0.36*s,0.55*s);
+    /* 太阳能板:上下各三片 */
+    ctx.fillStyle='#26365a';
+    for(const ox of [-1.1,0,1.1]){
+      const px=ox*s;
+      ctx.fillRect(px-0.5*s,-2.5*s,1.0*s,1.0*s);
+      ctx.fillRect(px-0.5*s, 1.5*s,1.0*s,1.0*s);
+      ctx.fillStyle='#3d5278';
+      ctx.fillRect(px-0.04*s,-2.5*s,0.08*s,5.0*s);
+      ctx.fillStyle='#26365a';
+    }
+  }
+  ctx.restore();
+}
+
+function drawMarker(st,t){
+  if(!st.geo)return;
+  const x=X(st.geo.lon),y=Y(st.geo.lat);
+  const p=(t%2200)/2200;
+  /* 脉冲圈 */
+  ctx.strokeStyle=st.color;ctx.globalAlpha=(1-p)*.5;
+  ctx.lineWidth=1.4*DPR;
+  ctx.beginPath();ctx.arc(x,y,(4+11*p)*DPR,0,7);ctx.stroke();
+  ctx.globalAlpha=1;
+  /* 投影 glow */
+  ctx.shadowColor=st.color;ctx.shadowBlur=6*DPR;
+  /* 实际外形 */
+  stationIcon(st,x,y,1.8);
+  ctx.shadowBlur=0;
+  /* 高亮中心白点便于视觉锁定 */
+  ctx.fillStyle='#fff';
+  ctx.beginPath();ctx.arc(x,y,1.0*DPR,0,7);ctx.fill();
+  /* 标签 */
+  const txt=`${st.label} · ${Math.round(st.geo.alt)}km`;
+  ctx.font=`600 ${10*DPR}px Rajdhani,sans-serif`;
+  const tw=ctx.measureText(txt).width;
+  let lx=x+10*DPR,ly=y-7*DPR;
+  if(lx+tw>W-4)lx=x-tw-10*DPR;
+  if(ly<12*DPR)ly=y+14*DPR;
+  ctx.lineWidth=3*DPR;ctx.strokeStyle='rgba(2,6,15,.92)';
+  ctx.strokeText(txt,lx,ly);
+  ctx.fillStyle=st.color;ctx.fillText(txt,lx,ly);
+}
+function render(t){
+  try{
+    if(W>0&&baseCv.width>0){
+      ctx.clearRect(0,0,W,H);
+      ctx.drawImage(baseCv,0,0);
+      ctx.drawImage(nightCv,0,0);
+      drawTrack(STATIONS.iss);drawTrack(STATIONS.tg);
+      drawMarker(STATIONS.iss,t||0);drawMarker(STATIONS.tg,t||0);
+    }
+  }catch(e){
+    if(!render.err){render.err=1;console.error('渲染异常',e);}
+  }
+  requestAnimationFrame(render);
+}
+
+/* ══ 数据面板刷新 ═══════════════════════ */
+const fmtLat=v=>`${Math.abs(v).toFixed(2)}°${v>=0?'N':'S'}`;
+const fmtLon=v=>`${Math.abs(v).toFixed(2)}°${v>=0?'E':'W'}`;
+function tick(){
+  const now=new Date();
+  $('clkUtc').textContent=now.toISOString().slice(11,19);
+  $('clkBjt').textContent=new Date(now.getTime()+288e5).toISOString().slice(11,19);
+  for(const st of Object.values(STATIONS)){
+    st.geo=geoAt(st,now);
+    const g=st.geo,k=st.key;
+    if(!g)continue;
+    $(k+'-lat').textContent=fmtLat(g.lat);
+    $(k+'-lon').textContent=fmtLon(g.lon);
+    $(k+'-alt').innerHTML=g.alt.toFixed(1)+'<u> km</u>';
+    $(k+'-vel').innerHTML=g.vel.toFixed(2)+'<u> km/s</u>';
+    $('hud-'+k).textContent=`${fmtLat(g.lat)} ${fmtLon(g.lon)} · ${Math.round(g.alt)}km`;
+    if(st.satrec){
+      const incl=(st.satrec.inclo/RAD).toFixed(1);
+      const period=(2*Math.PI/st.satrec.no).toFixed(1);
+      const age=st.tleAge<1?`${Math.round(st.tleAge*24)}h前`:`${st.tleAge.toFixed(1)}天前`;
+      const warn=st.tleSrc==='offline'?' <span class="tle-warn">⚠ 离线TLE(可能过期)</span>':'';
+      $(k+'-meta').innerHTML=`轨道倾角 ${incl}° · 周期 ${period} min · TLE ${age} · ${st.tleSrc}${warn}`;
+    }
+  }
+}
+setInterval(tick,1000);
+
+/* ══ 乘组信息 ═══════════════════════════ */
+const CN_NAMES={
+  'Chen Dong':'陈冬','Chen Zhongrui':'陈中瑞','Wang Jie':'王杰',
+  'Cai Xuzhe':'蔡旭哲','Song Lingdong':'宋令东','Wang Haoze':'王浩泽',
+  'Zhang Lu':'张陆','Wu Fei':'武飞','Zhang Hongzhang':'张洪章',
+  'Jing Haipeng':'景海鹏','Zhu Yangzhu':'朱杨柱','Gui Haichao':'桂海潮',
+  'Tang Hongbo':'汤洪波','Tang Shengjie':'唐胜杰','Jiang Xinlin':'江新林',
+  'Ye Guangfu':'叶光富','Li Cong':'李聪','Li Guangsu':'李广苏',
+  'Liu Yang':'刘洋','Wang Yaping':'王亚平','Zhai Zhigang':'翟志刚',
+  'Nie Haisheng':'聂海胜','Liu Boming':'刘伯明','Fei Junlong':'费俊龙',
+  'Deng Qingming':'邓清明','Yang Hongbo':'杨宏波'
+};
+const flagEmoji=cc=>cc&&cc.length===2?String.fromCodePoint(...[...cc.toUpperCase()].map(c=>127397+c.charCodeAt(0))):'';
+function daysInSpace(p){
+  let t=p.launched;
+  if(typeof t==='number'&&t>1e9)t*=1000;
+  else if(typeof t==='string')t=Date.parse(t);
+  if(t&&isFinite(t)&&t>0)return Math.max(0,Math.floor((Date.now()-t)/86400000));
+  if(typeof p.days_in_space==='number')return p.days_in_space;
+  return null;
+}
+function crewChip(p){
+  const el=document.createElement('div');el.className='astro';
+  const cn=CN_NAMES[p.name];
+  const days=daysInSpace(p);
+  const initials=(p.name||'?').split(/\s+/).map(s=>s[0]).slice(0,2).join('').toUpperCase();
+  el.innerHTML=`
+    <div class="avatar"><span class="initials">${initials}</span></div>
+    <div class="aname" title="${p.name}${p.spacecraft?' · '+p.spacecraft:''}${p.position?' · '+p.position:''}">${cn||p.name} ${flagEmoji(p.flag_code)}</div>
+    <div class="adays">${days!=null?'在轨 '+days+' 天':(p.agency||'')}</div>`;
+  if(p.image){
+    const img=new Image();
+    img.referrerPolicy='no-referrer';img.alt=p.name;
+    img.onload=()=>{const av=el.querySelector('.avatar');av.innerHTML='';av.appendChild(img);};
+    img.onerror=()=>{if(img.src!==p.image){img.src=p.image;}}; /* 缩略图失败则回退原图 */
+    img.src=thumbURL(p.image);
+  }
+  return el;
+}
+/* 维基共享资源原图动辄数 MB,转成 240px 缩略图 */
+function thumbURL(u){
+  const m=/^https:\/\/upload\.wikimedia\.org\/wikipedia\/commons\/([0-9a-f])\/([0-9a-f]{2})\/([^/]+)$/i.exec(u||'');
+  return m?`https://upload.wikimedia.org/wikipedia/commons/thumb/${m[1]}/${m[2]}/${m[3]}/240px-${m[3]}`:u;
+}
+function renderCrew(listId,people){
+  const box=$(listId);box.innerHTML='';
+  if(!people.length){box.innerHTML='<div class="crew-error">暂无乘组数据</div>';return;}
+  people.forEach(p=>box.appendChild(crewChip(p)));
+}
+/* 乘组已多行显示,不再需要自动横滚 */
+async function loadCrew(){
+  const sources=[
+    'https://raw.githubusercontent.com/corquaid/international-space-station-APIs/main/JSON/people-in-space.json',
+    'https://corquaid.github.io/international-space-station-APIs/JSON/people-in-space.json'
+  ];
+  let data=null;
+  for(const u of sources){try{data=await jfetch(u);break;}catch(e){}}
+  if(!data){ /* 最后兜底:open-notify(仅姓名) */
+    try{
+      const j=await jfetch('http://api.open-notify.org/astros.json');
+      data={people:j.people.map(p=>({name:p.name,spacecraft:p.craft}))};
+    }catch(e){}
+  }
+  if(!data||!Array.isArray(data.people)){
+    $('iss-crew').innerHTML=$('tg-crew').innerHTML='<div class="crew-error">乘组数据源不可达</div>';
+    return;
+  }
+  /* corquaid 源用 iss 布尔字段标记归属;open-notify 兜底源用 craft 名称 */
+  const craft=p=>String(p.spacecraft||p.location||'').toLowerCase();
+  const isTG=p=>p.iss===false||/tiangong|css|tianhe|shenzhou/.test(craft(p));
+  const isISS=p=>!isTG(p)&&(p.iss===true||/\biss\b|dragon|soyuz|starliner/.test(craft(p)));
+  renderCrew('iss-crew',data.people.filter(isISS));
+  renderCrew('tg-crew',data.people.filter(isTG));
+  logComm(`乘组名单已更新 · 在轨总人数 ${data.people.length}`);
+}
+
+/* ══ 空地通信(NASA ISSLIVE 遥测) ════════ */
+function logComm(msg){
+  const log=$('commLog');
+  const t=new Date().toISOString().slice(11,19);
+  const line=document.createElement('div');
+  line.textContent=`[${t} UTC] ${msg}`;
+  log.prepend(line);
+  while(log.children.length>2)log.removeChild(log.lastChild);
+}
+/* 判定逻辑:ISS 遥测数据流(任务时钟等)持续流入 = 空地链路在通;
+   断流超过 20s = 失联弧段(LOS)。AOS 专项仅在切换时推送,作为事件记录。 */
+let lastTelemetry=0,linkState=null;
+function setLink(on){
+  const dot=$('aosDot'),txt=$('aosText');
+  if(on){dot.className='dot on';txt.textContent='信号已建立 · 遥测数据流入中';}
+  else{dot.className='dot off';txt.textContent='信号中断 LOS · 等待下一测控弧段';}
+  if(linkState!==null&&linkState!==on)logComm(on?'ISS 恢复对地信号 (AOS)':'ISS 信号丢失 (LOS)');
+  linkState=on;
+}
+function loadScript(src){return new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=no;document.head.appendChild(s);});}
+async function initAOS(){
+  try{
+    await loadScript('https://cdn.jsdelivr.net/npm/lightstreamer-client-web@8.0.8/lightstreamer.min.js');
+    const NS=window.lightstreamerExports||window;
+    if(!NS.LightstreamerClient)throw new Error('no client');
+    const client=new NS.LightstreamerClient('https://push.lightstreamer.com','ISSLIVE');
+    const sub=new NS.Subscription('MERGE',['AOS','TIME_000001'],['TimeStamp','Value','Status.Class']);
+    sub.setRequestedSnapshot('yes');
+    sub.addListener({onItemUpdate:u=>{
+      if(u.getItemName()==='AOS'){
+        const v=parseFloat(u.getValue('Value'));
+        if(isFinite(v))logComm(v>=1?'测控网事件:AOS 信号捕获':'测控网事件:LOS 信号丢失');
+      }else{
+        lastTelemetry=Date.now();
+      }
+    }});
+    client.subscribe(sub);client.connect();
+    setInterval(()=>{
+      if(lastTelemetry===0)return; /* 尚无数据,保持"连接中" */
+      setLink(Date.now()-lastTelemetry<20000);
+    },5000);
+    setTimeout(()=>{if(lastTelemetry===0)$('aosText').textContent='遥测通道无响应';},30000);
+  }catch(e){
+    $('aosText').textContent='遥测通道不可用';
+  }
+}
+/* NASA 空地通话音频(官方 ISS 常驻直播流,含 space-to-ground 音频)
+   音频框支持:隐藏 YouTube 视频、自由拖拽、自由缩放、收敛/恢复、形状切换。 */
+const YT_LIVE='https://www.youtube.com/embed/uwXgcTc8oY8?autoplay=1&modestbranding=1&rel=0';
+const YT_FALLBACK_HTML=`<div class="fallback">NASA 官方 ISS 直播 · 无法播放时
+  <a href="https://www.youtube.com/@NASA/live" target="_blank" rel="noopener">去 YouTube 打开</a>
+  <a href="https://plus.nasa.gov/scheduled-video/iss-live/" target="_blank" rel="noopener">NASA+</a></div>`;
+const audioBox=$('audioBox'),abFrame=$('abFrame'),abBar=$('abBar'),abRestore=$('abRestore');
+let abOpen=false,abAudioOnly=false;
+const AB_SHAPES=['14px','2px','50%'];  /* 圆角/方形/圆形 三档 */
+let abShapeIdx=0;
+function audioBoxFrameInner(){
+  abFrame.innerHTML=`<iframe src="${YT_LIVE}" allow="autoplay; encrypted-media" title="NASA ISS Live"></iframe>${YT_FALLBACK_HTML}`;
+}
+function setAudioOnly(on){
+  abAudioOnly=on;
+  abFrame.classList.toggle('audio-only',on);
+  $('abAudioOnly').classList.toggle('on',on);
+  $('abAudioOnly').textContent=on?'有声':'仅音频';
+}
+function setShape(idx){
+  abShapeIdx=idx%AB_SHAPES.length;
+  audioBox.style.setProperty('--ab-radius',String(AB_SHAPES[abShapeIdx]));
+}
+function openAudioBox(){
+  if(!abOpen){
+    audioBoxFrameInner();
+    audioBox.hidden=false;
+    audioBox.setAttribute('aria-hidden','false');
+    abOpen=true;
+    abRestore.hidden=true;
+  }
+}
+function closeAudioBox(){
+  abFrame.innerHTML='';
+  audioBox.hidden=true;
+  audioBox.setAttribute('aria-hidden','true');
+  abOpen=false;
+}
+function minimizeAudioBox(){
+  audioBox.hidden=true;
+  abFrame.innerHTML='';
+  abOpen=false;
+  abRestore.hidden=false;
+  abRestore.setAttribute('aria-hidden','false');
+}
+/* 主按钮:切换开/收 */
+$('audioBtn').addEventListener('click',()=>{
+  if(abOpen){minimizeAudioBox();$('audioBtn').textContent='▶ 空地通话音频';}
+  else{openAudioBox();$('audioBtn').textContent='⏹ 关闭音频';}
+});
+/* 工具栏按钮 */
+$('abAudioOnly').addEventListener('click',()=>setAudioOnly(!abAudioOnly));
+$('abShape').addEventListener('click',()=>setShape(abShapeIdx+1));
+$('abMinimize').addEventListener('click',()=>{minimizeAudioBox();$('audioBtn').textContent='▶ 空地通话音频';});
+$('abClose').addEventListener('click',()=>{closeAudioBox();$('audioBtn').textContent='▶ 空地通话音频';});
+abRestore.addEventListener('click',()=>{openAudioBox();$('audioBtn').textContent='⏹ 关闭音频';});
+
+/* ── 拖拽 ── */
+let abDrag=null;
+abBar.addEventListener('pointerdown',e=>{
+  if(e.target.closest('.ab-btn'))return;
+  const r=audioBox.getBoundingClientRect();
+  abDrag={
+    sx:e.clientX,sy:e.clientY,
+    ox:r.left,oy:r.top,
+    pw:audioBox.offsetParent?audioBox.offsetParent.clientWidth:window.innerWidth,
+    ph:audioBox.offsetParent?audioBox.offsetParent.clientHeight:window.innerHeight,
+    w:r.width,h:r.height,
+  };
+  audioBox.style.position='fixed';
+  audioBox.style.left=r.left+'px';
+  audioBox.style.top=r.top+'px';
+  audioBox.style.transform='none';
+  audioBox.setPointerCapture(e.pointerId);
+});
+abBar.addEventListener('pointermove',e=>{
+  if(!abDrag)return;
+  let nx=abDrag.ox+(e.clientX-abDrag.sx);
+  let ny=abDrag.oy+(e.clientY-abDrag.sy);
+  const margin=4;
+  nx=Math.max(margin,Math.min(window.innerWidth-abDrag.w-margin,nx));
+  ny=Math.max(margin,Math.min(window.innerHeight-abDrag.h-margin,ny));
+  audioBox.style.left=nx+'px';
+  audioBox.style.top=ny+'px';
+});
+abBar.addEventListener('pointerup',e=>{
+  if(!abDrag)return;
+  abDrag=null;
+  try{audioBox.releasePointerCapture(e.pointerId);}catch(err){}
+});
+abBar.addEventListener('pointercancel',()=>abDrag=null);
+
+/* ── 缩放(右下角) ── */
+const abResize=$('abResize');
+let abRz=null;
+abResize.addEventListener('pointerdown',e=>{
+  e.preventDefault();e.stopPropagation();
+  const r=audioBox.getBoundingClientRect();
+  abRz={sx:e.clientX,sy:e.clientY,w:r.width,h:r.height};
+  audioBox.style.aspectRatio='auto';
+  audioBox.setPointerCapture(e.pointerId);
+});
+abResize.addEventListener('pointermove',e=>{
+  if(!abRz)return;
+  let nw=abRz.w+(e.clientX-abRz.sx);
+  let nh=abRz.h+(e.clientY-abRz.sy);
+  nw=Math.max(140,Math.min(window.innerWidth-12,nw));
+  nh=Math.max(80, Math.min(window.innerHeight-12,nh));
+  audioBox.style.width=nw+'px';
+  audioBox.style.height=nh+'px';
+});
+abResize.addEventListener('pointerup',e=>{
+  if(!abRz)return;
+  abRz=null;
+  try{audioBox.releasePointerCapture(e.pointerId);}catch(err){}
+});
+abResize.addEventListener('pointercancel',()=>abRz=null);
+
+/* 浏览器窗口变化时把窗口锁回可视范围 */
+window.addEventListener('resize',()=>{
+  if(audioBox.hidden)return;
+  const r=audioBox.getBoundingClientRect();
+  if(r.right>window.innerWidth){
+    audioBox.style.left=Math.max(4,window.innerWidth-r.width-4)+'px';
+  }
+  if(r.bottom>window.innerHeight){
+    audioBox.style.top=Math.max(4,window.innerHeight-r.height-4)+'px';
+  }
+});
+setShape(0);
+
+/* ══ 底部滚动条 ═════════════════════════ */
+function updateTicker(){
+  const s=STATIONS;
+  $('tickerText').textContent=
+    `数据源:CelesTrak TLE(ISS ${s.iss.tleSrc||'…'} / 天宫 ${s.tg.tleSrc||'…'})· 位置由 SGP4 模型逐秒实时解算 · `+
+    `乘组数据:Open Notify / corquaid People-in-Space API · 通信状态:NASA ISSLive 遥测 · `+
+    `本页面为公开数据聚合展示,非官方产品 ─── `;
+}
+
+/* ══ 启动 ═══════════════════════════════ */
+new ResizeObserver(resize).observe(canvas);
+resize();
+loadWorld();
+loadTLEs();
+setInterval(loadTLEs,3*3600*1000);   /* TLE 每 3 小时刷新 */
+loadCrew();
+setInterval(loadCrew,3600*1000);     /* 乘组每小时刷新 */
+initAOS();
+tick();
+requestAnimationFrame(render);
+logComm('追踪系统初始化完成,正在接入公开数据接口');
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+# Editor / IDE 缓存
+.claude/
+.vscode/
+.idea/
+.DS_Store
+
+# 临时备份
+*.bak
+*.tmp
+~$*
