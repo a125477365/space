@@ -613,17 +613,25 @@ function drawTrack(st){
     cur.push(p);prev=p;
   }
   if(cur.length)lonSegs.push(cur);
-  /* 再把每个 lonSeg 按 future 拆成精细子段 */
+  /* 再把每个 lonSeg 按 future 拆成精细子段
+     关键修复:切换 past→future (或 future→past)时,把切换前一段的最后一点
+     复制到新一段的 buf 头部,作为两段的公共连接点。否则 past 最后一点和
+     future 第一点不重合,导致线段在切换处断开/错位 —— 这正是用户报告的
+     "空间站前面和后面的轨道线对接不上" 的原因。 */
   const paths={past:[],future:[]};
   for(const seg of lonSegs){
-    let buf=[];let kind=null;
+    let buf=[];let kind=null;let lastPrev=null;
     for(const p of seg){
       const k=p.future?'future':'past';
       if(kind!==null&&k!==kind){
         if(buf.length>1)paths[kind].push(buf);
-        buf=[];kind=k;
+        /* 切段时把前段最后一点作为新段第一点,保证 past 末尾 == future 头部 */
+        buf=lastPrev?[lastPrev,p]:[p];
+        kind=k;
+      }else{
+        buf.push(p);
       }
-      buf.push(p);kind=k;
+      lastPrev=p;kind=k;
     }
     if(buf.length>1)paths[kind].push(buf);
   }
