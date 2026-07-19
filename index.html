@@ -284,7 +284,7 @@ h1 small{
         <h2>在轨乘组 CREW ABOARD</h2><small>ISS · 天宫 CSS · 实时</small>
         <span class="badge">实时</span>
       </div>
-      <!-- ISS 分组:背景为 YouTube 嵌入 -->
+      <!-- ISS 分组:背景为本地高清静图 (STS111 ISS 飞越地球弧线剪影) -->
       <div class="crew-block" id="crew-block-iss" style="--c:var(--iss)">
         <div class="crew-block-title">
           <i></i>ISS 国际空间站
@@ -292,7 +292,7 @@ h1 small{
           <em id="iss-count">--</em>
         </div>
         <div class="crew-bg">
-          <iframe id="YT_ISS" title="NASA ISS Live" allow="autoplay; encrypted-media; accelerometer; gyroscope; picture-in-picture; web-share; fullscreen; enablejsapi" allowfullscreen></iframe>
+          <img class="crew-bg-static" id="iss-bg-static" alt="ISS over Earth's limb" src="assets/iss-silhouette.jpg">
           <div class="crew-bg-dim"></div>
           <div class="crew" id="iss-crew"><div class="crew-loading">正在获取乘组名单…</div></div>
         </div>
@@ -305,7 +305,7 @@ h1 small{
           <em id="tg-count">--</em>
         </div>
         <div class="crew-bg">
-          <img class="crew-bg-static" alt="天宫空间站官方高清图" loading="lazy"/>
+          <img class="crew-bg-static" id="tg-bg-static" alt="天宫空间站官方高清图" src="assets/tiangong-spacewalk.jpg">
           <div class="crew-bg-dim"></div>
           <div class="crew" id="tg-crew"><div class="crew-loading">正在获取乘组名单…</div></div>
         </div>
@@ -837,85 +837,44 @@ async function loadCrew(){
   renderCrew('tg-crew',data.people.filter(isTG));
 }
 
-/* ══ 背景视频 / 高清图 ──
-   ISS 卡片背景 — 方案 A: 用非 YouTube 直播源。
-   UStream(IBM Video Streaming)上 NASA Ames 公开频道 17074538
-   "ISS HD Earth Viewing Experiment" 自 2014 上线持续到今,
-   通过 curl 验证 embed/17074538 返回 200,浏览器可嵌入。
-   UStream 仍以 video.ibm.com 提供服务,无 YouTube embed 错误 153 限制。
+/* ══ 卡片背景本地高清静图 ──
+   ISS / 天宫 卡片都使用 assets/ 目录下的本地高清 jpg 作为背景,
+   规避了所有视频流问题：
+   - YouTube embed 错误 153 (NASA 禁止嵌入)
+   - UStream/IBM Video bot detection
+   - NASA akamaized HLS 端点全部下线
+   - Wikimedia 防盗链/CORS
 
-   天宫卡片背景 — 直接使用本地 jpg 高清静图(Shenzhou-15 spacewalk, NASA 公开)。
+   ISS 图(NASA STS111):  国际空间站飞越地球弧线剪影,空间站本体完整可见
+   天宫图(中国载人航天): 神舟十五号出舱作业,空间站本体与地球背景
 
-   完整切换链:
-     1) UStream embed (NASA Ames 原始 HDEV 17074538)
-     2) YouTube 备援 1: @liveiss 5o7dz41FNPg
-     3) YouTube 备援 2: @liveiss t6UWFH7dm_s
-   自动通过 iframe onError 切换,无用户介入。 */
+   两图均加 onError 备援逻辑,主图挂了自动切换到备援,备援挂了停留显示。 */
 
-/* 主源: UStream/IBM Video NASA HDEV 17074538 (允许嵌入,经实测) */
-const STREAM_PRIMARY  = 'https://www.ustream.tv/embed/17074538?autoplay=true&muted=true&html5pu=1&showtitle=false&showdescriptions=false&hidechat=true&hidedt=true&controls=false';
-/* 备援 1: @liveiss YouTube 5o7dz41FNPg */
-const STREAM_BACKUP_1 = 'https://www.youtube-nocookie.com/embed/5o7dz41FNPg?autoplay=1&mute=1&loop=1&playlist=5o7dz41FNPg&playsinline=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1';
-/* 备援 2: @liveiss YouTube t6UWFH7dm_s */
-const STREAM_BACKUP_2 = 'https://www.youtube-nocookie.com/embed/t6UWFH7dm_s?autoplay=1&mute=1&loop=1&playlist=t6UWFH7dm_s&playsinline=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1';
-
-/* 天宫高清静图 — 已下载到本地 assets/ 目录（规避 Wikimedia 防盗链 + CORS） */
-const TG_BG_URL='assets/tiangong-spacewalk.jpg';
+/* ISS 本地静图 — 主图 STS111 飞越剪影 + 备援 STS098 Zenith view */
+const ISS_BG_URL ='assets/iss-silhouette.jpg';
+const ISS_BG_URL2='assets/iss-zenith.jpg';
+/* 天宫本地静图 — 主图 神舟十五号出舱 + 备援 天宫后视 */
+const TG_BG_URL ='assets/tiangong-spacewalk.jpg';
 const TG_BG_URL2='assets/tiangong-rear.jpg';
 
-/* 启动 ISS 直播 iframe — UStream/HDEV 主源 + YouTube 双备援级联 */
-let issStreamIdx=0;
-const ISS_STREAMS=[STREAM_PRIMARY, STREAM_BACKUP_1, STREAM_BACKUP_2];
-function startISSLiveStream(){
-  const f=$('YT_ISS');
-  if(!f)return;
-  issStreamIdx=0;
-  f.src=ISS_STREAMS[0];
-  /* 加载失败自动切换 — onError 通过 setTimeout 延迟避免竞态 */
-  f.onerror=()=>{ issStreamFallback(); };
-  /* UStream 有时静默失败 — 加一个 timeout 检测器 */
-  clearTimeout(window.__issCheck);
-  window.__issCheck=setTimeout(()=>{
-    /* iframe 仍空白 → 切到下一个 */
-    try{
-      const doc=f.contentDocument;
-      if(doc && doc.body && doc.body.children.length===0){ issStreamFallback(); }
-    }catch(e){ /* cross-origin 视为正常加载,不切 */ }
-  }, 6000);
-}
-/* 备援:主 URL 失败时切换。UStream iframe 通常丢 onError,但 YouTube 一定会触发 */
-function issStreamFallback(){
-  const f=$('YT_ISS');
-  if(!f)return;
-  issStreamIdx++;
-  if(issStreamIdx>=ISS_STREAMS.length){
-    /* 三级全失败 — 留在最后一级并显示静态 fallback 图(下方已在 CSS 加 filter) */
-    return;
-  }
-  f.src=ISS_STREAMS[issStreamIdx];
-  console.warn('ISS stream fallback to', ISS_STREAMS[issStreamIdx]);
-}
-/* 启动天宫卡片背景静态图 */
-function startTiangongBackground(){
-  const img=document.querySelector('#crew-block-tg .crew-bg-static');
+/* 启动 ISS / 天宫 卡片背景静态图(主图 + 备援级联) */
+function loadCrewBg(blockId, mainUrl, backupUrl){
+  const img=document.querySelector(`#${blockId} .crew-bg-static`);
   if(!img)return;
   img.onerror=()=>{
     if(img.dataset.fallback==='1'){return;}
     img.dataset.fallback='1';
-    img.src=TG_BG_URL2;       /* 主图加载失败 -> 切到备援 */
+    img.src=backupUrl;       /* 主图加载失败 -> 切到备援 */
   };
-  img.src=TG_BG_URL;
+  img.src=mainUrl;
 }
-
-startISSLiveStream();
-startTiangongBackground();
 
 /* ══ 底部滚动条 ═════════════════════════ */
 function updateTicker(){
   const s=STATIONS;
   $('tickerText').textContent=
     `数据源:CelesTrak TLE(ISS ${s.iss.tleSrc||'…'} / 天宫 ${s.tg.tleSrc||'…'})· 位置由 SGP4 模型逐秒实时解算 · `+
-    `乘组数据:Open Notify / corquaid People-in-Space API · 空地通话:NASA UStream HDEV 17074538 / YouTube 备援 · `+
+    `乘组数据:Open Notify / corquaid People-in-Space API · 背景:NASA STS111 / 中国载人航天工程 公开高清图 · `+
     `本页面为公开数据聚合展示,非官方产品 ─── `;
 }
 
@@ -927,6 +886,9 @@ loadTLEs();
 setInterval(loadTLEs,3*3600*1000);   /* TLE 每 3 小时刷新 */
 loadCrew();
 setInterval(loadCrew,3600*1000);     /* 乘组每小时刷新 */
+/* 加载 ISS / 天宫 卡片本地高清背景图 */
+loadCrewBg('crew-block-iss', ISS_BG_URL, ISS_BG_URL2);
+loadCrewBg('crew-block-tg',  TG_BG_URL,  TG_BG_URL2);
 /* initAOS 已下线 */
 tick();
 requestAnimationFrame(render);
