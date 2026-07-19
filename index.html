@@ -109,10 +109,14 @@ h1 small{
   background:rgba(4,9,24,.6);border-radius:1.2cqw;padding:.8cqw 1.6cqw;
 }
 
-/* ── 空间站卡片 ────────────────────── */
-#cards{flex:1 1 0;min-height:0;display:flex;flex-direction:column;gap:1.2cqh;padding:1.2cqh 2.6cqw}
+/* ── 空间站卡片(单卡 ISS + 天宫 分组)── */
+#cards{
+  flex:0 0 auto;          /* 卡片按内容高度撑开,不强制占用 */
+  min-height:0;
+  display:flex;flex-direction:column;gap:1.2cqh;
+  padding:.4cqh 2.6cqw;
+}
 .scard{
-  flex:1 1 0;min-height:0;
   background:var(--panel);
   border:1px solid var(--line);
   border-left:3px solid var(--c);
@@ -122,38 +126,45 @@ h1 small{
   overflow:hidden;
 }
 .scard-head{display:flex;align-items:baseline;gap:2cqw;flex:0 0 auto}
-.scard-head h2{font-size:3.6cqw;font-weight:700;letter-spacing:.06em}
-.scard-head small{font-family:var(--num);font-weight:600;font-size:2.4cqw;color:var(--dim);letter-spacing:.1em}
+.scard-head h2{font-size:3.4cqw;font-weight:700;letter-spacing:.06em}
+.scard-head small{font-family:var(--num);font-weight:600;font-size:2.3cqw;color:var(--dim);letter-spacing:.1em}
 .badge{
-  margin-left:auto;font-size:2.3cqw;letter-spacing:.2em;
-  color:var(--c);border:1px solid var(--c);
-  border-radius:99px;padding:.3cqh 2cqw;
+  margin-left:auto;font-size:2.2cqw;letter-spacing:.2em;
+  color:var(--live);border:1px solid var(--live);
+  border-radius:99px;padding:.2cqh 2cqw;
 }
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1.4cqw;margin-top:.6cqh;flex:0 0 auto}
-.stat{background:rgba(255,255,255,.04);border-radius:1.6cqw;padding:.45cqh 1.2cqw;text-align:center}
-.stat label{display:block;font-size:2.2cqw;color:var(--dim);letter-spacing:.18em}
-.stat b{
-  display:block;font-family:var(--num);font-weight:700;font-size:3.7cqw;
-  font-variant-numeric:tabular-nums;color:var(--c);margin-top:.15cqh;white-space:nowrap;
+/* 分组(ISS / 天宫) */
+.crew-block{
+  margin-top:.9cqh;
+  border-top:1px dashed var(--line);
+  padding-top:.5cqh;
 }
-.stat b u{text-decoration:none;font-size:2.3cqw;color:var(--dim);font-weight:600}
-.meta-line{
-  margin-top:.5cqh;font-family:var(--num);font-weight:600;
-  font-size:2.4cqw;color:var(--dim);letter-spacing:.05em;flex:0 0 auto;
-  display:flex;align-items:center;gap:1.6cqw;white-space:nowrap;overflow:hidden;
+.crew-block:first-of-type{margin-top:.6cqh}
+.crew-block-title{
+  display:flex;align-items:center;gap:1.2cqw;
+  font-family:var(--num);font-weight:700;font-size:2.6cqw;
+  letter-spacing:.10em;color:var(--text);
+  margin-bottom:.4cqh;
 }
-.meta-line .tle-warn{color:var(--warn)}
+.crew-block-title i{
+  width:1.6cqw;height:1.6cqw;border-radius:50%;background:var(--c);
+  box-shadow:0 0 1cqw var(--c);
+}
+.crew-block-title em{
+  font-style:normal;margin-left:auto;color:var(--c);
+  font-family:var(--num);font-weight:700;font-size:2.6cqw;
+}
+.stats,.meta-line{display:none !important}   /* 不再使用,统一关闭以便旧样式不影响 */
 .crew{
-  flex:1 1 auto;         /* 允许乘组网格在剩余空间内撑开 */
-  min-height:0;margin-top:.7cqh;
+  margin-top:.3cqh;
   display:grid;
-  /* 同时显示所有宇航员:列宽 8.5cqw 让 9 列以上同屏并列 */
+  /* 同屏并列多列,头像不大、并排多列 */
   grid-template-columns:repeat(auto-fill,minmax(8.5cqw,1fr));
   grid-auto-rows:min-content;
   gap:.8cqw .5cqw;
   align-content:start;
-  overflow:hidden;       /* 不滚动 */
-  padding-right:0;
+  /* 多行铺开不滚动,内容决定 crew-block 撑开 */
+  overflow:visible;
 }
 .crew::-webkit-scrollbar{display:none}
 .crew-loading,.crew-error{font-size:2.4cqw;color:var(--dim);align-self:center;grid-column:1/-1}
@@ -170,41 +181,38 @@ h1 small{
 .aname{font-size:1.9cqw;margin-top:.25cqh;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .adays{font-family:var(--num);font-weight:600;font-size:1.8cqw;color:var(--dim);margin-top:.05cqh;white-space:nowrap}
 
-/* ── 空地通信 ─────────────────────── */
+/* ── 空地通信 / 空地通话音频 ─────────────── */
 #comm{
-  flex:0 0 auto;
+  flex:1 1 auto;          /* 撑满 stage 剩余空间 */
+  min-height:0;
   margin:0 2.6cqw 1.2cqh;
   background:var(--panel);border:1px solid var(--line);border-radius:2cqw;
-  padding:1cqh 2.8cqw;
-  display:flex;justify-content:center;gap:1.2cqw;
+  padding:0;             /* 展开态要 iframe 占满,所以 padding=0 */
+  position:relative;
+  display:flex;
+  align-items:center;justify-content:center;
+  overflow:hidden;
 }
 .comm-title,.comm-row{display:none !important}
+
+/* 按钮 — 折叠态 */
 #audioBtn{
-  font-family:var(--sans);font-size:2.6cqw;color:var(--iss);
+  font-family:var(--sans);font-size:2.8cqw;color:var(--iss);
   background:transparent;border:1px solid var(--iss);border-radius:99px;
-  padding:.5cqh 2.4cqw;cursor:pointer;letter-spacing:.05em;flex:1;
+  padding:.7cqh 2.6cqw;cursor:pointer;letter-spacing:.06em;
+  z-index:1;
 }
 #audioBtn:focus-visible{outline:2px solid var(--live);outline-offset:2px}
 #audioBtn:hover{background:rgba(127,216,255,.12)}
-/* 音频播放器悬浮、可拖拽、可缩放、可隐藏视频、可切形状(圆角短边/矩形/圆形)
-   默认状态:打开后即显示 YouTube 视频,用户再通过工具按钮隐藏视频或调整窗口。 */
+
+/* audioBox — 展开态:占满 #comm */
 #audioBox{
-  position:fixed;
-  width:70vw;
-  max-width:1280px;
-  min-width:280px;
-  height:40vh;
-  min-height:200px;
-  max-height:80vh;
-  z-index:60;
+  position:absolute;inset:0;
+  z-index:2;
   background:#000;
-  border:1px solid var(--line-strong);
-  border-radius:var(--ab-radius,14px);
+  border-radius:inherit;
   overflow:hidden;
-  box-shadow:0 14px 40px rgba(0,0,0,.7),0 2px 6px rgba(0,0,0,.5);
   display:flex;flex-direction:column;
-  touch-action:none;
-  /* 不用 CSS resize,已用自定义右下角手柄 */
 }
 #audioBox .ab-frame{
   flex:1 1 auto;
@@ -218,8 +226,8 @@ h1 small{
   border:0;display:block;
 }
 #audioBox .ab-frame.audio-only iframe{
-  /* YouTube 仅占底部音轨条(40px),看不到视频画面 */
-  height:40px;
+  /* 仅音频模式:youtube 只占底部音轨条,视频画面隐藏 */
+  height:50px;
   bottom:0;top:auto;
   pointer-events:none;
 }
@@ -233,16 +241,9 @@ h1 small{
   letter-spacing:.18em;
 }
 #audioBox .ab-frame.audio-only .fallback{display:none}
-#audioBox .ab-cover{
-  position:absolute;inset:0;
-  background:linear-gradient(180deg,rgba(8,16,32,.55),rgba(2,6,15,.85));
-  color:var(--text);
-  display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1cqw;
-  font-family:var(--num);font-size:2.3cqw;letter-spacing:.1em;
-}
 #audioBox .fallback{
   position:absolute;left:0;right:0;bottom:0;
-  font-size:2cqw;padding:.6cqh 1.8cqw;color:var(--dim);background:rgba(2,6,15,.8);
+  font-size:2cqw;padding:.5cqh 1.8cqw;color:var(--dim);background:rgba(2,6,15,.8);
   display:flex;gap:1.4cqw;flex-wrap:wrap;align-items:center;
 }
 #audioBox .fallback a{color:var(--iss);text-decoration:none}
@@ -251,13 +252,11 @@ h1 small{
   display:flex;align-items:center;gap:1.4cqw;
   padding:.45cqh 1.4cqw;
   background:rgba(2,6,15,.94);
-  border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);
   font-family:var(--num);font-size:2.2cqw;color:var(--dim);
-  cursor:grab;user-select:none;
 }
-.ab-bar:active{cursor:grabbing}
 .ab-bar .ab-title{letter-spacing:.18em}
-.ab-tools{margin-left:auto;display:flex;gap:1.2cqw}
+.ab-tools{margin-left:auto;display:flex;gap:1.2cqw;align-items:center}
 .ab-btn{
   font-family:var(--sans);font-size:2.1cqw;
   color:var(--text);
@@ -269,17 +268,7 @@ h1 small{
 }
 .ab-btn:hover{background:rgba(120,200,255,.16);color:var(--iss)}
 .ab-btn.on{background:var(--iss);color:#02060f;border-color:var(--iss)}
-.ab-resize{
-  position:absolute;right:0;bottom:0;background:transparent;
-  width:18px;height:18px;cursor:nwse-resize;z-index:5;
-  border-right:2px solid var(--iss);border-bottom:2px solid var(--iss);
-  border-bottom-right-radius:6px;opacity:.8;
-}
-.ab-resize:hover{opacity:1}
-#abMinimize,#abMaximize{display:inline-flex}
-#comm.ab-host{position:relative;z-index:60}
 [hidden]{display:none!important}
-
 /* ── 底部滚动条 ────────────────────── */
 #ticker{
   flex:0 0 auto;border-top:1px solid var(--line);
@@ -318,58 +307,38 @@ h1 small{
   </div>
 
   <div id="cards">
-    <section class="scard" id="card-iss" style="--c:var(--iss)">
+    <section class="scard" id="card-crew" style="--c:var(--iss)">
       <div class="scard-head">
-        <h2>国际空间站</h2><small>ISS · NORAD 25544</small>
+        <h2>在轨乘组 CREW ABOARD</h2><small>ISS · 天宫 CSS</small>
         <span class="badge">实时</span>
       </div>
-      <div class="stats">
-        <div class="stat"><label>纬度</label><b id="iss-lat">--</b></div>
-        <div class="stat"><label>经度</label><b id="iss-lon">--</b></div>
-        <div class="stat"><label>高度</label><b id="iss-alt">--<u> km</u></b></div>
-        <div class="stat"><label>速度</label><b id="iss-vel">--<u> km/s</u></b></div>
+      <!-- 分组分块:ISS -->
+      <div class="crew-block" id="crew-block-iss" style="--c:var(--iss)">
+        <div class="crew-block-title"><i></i>ISS 国际空间站 <em id="iss-count">--</em></div>
+        <div class="crew" id="iss-crew"><div class="crew-loading">正在获取乘组名单…</div></div>
       </div>
-      <div class="meta-line" id="iss-meta">正在获取轨道数据…</div>
-      <div class="crew" id="iss-crew"><div class="crew-loading">正在获取乘组名单…</div></div>
-    </section>
-
-    <section class="scard" id="card-tg" style="--c:var(--tg)">
-      <div class="scard-head">
-        <h2>天宫 · 中国空间站</h2><small>CSS · NORAD 48274</small>
-        <span class="badge">实时</span>
+      <!-- 分组分块:天宫 -->
+      <div class="crew-block" id="crew-block-tg" style="--c:var(--tg)">
+        <div class="crew-block-title"><i></i>天宫 中国空间站 <em id="tg-count">--</em></div>
+        <div class="crew" id="tg-crew"><div class="crew-loading">正在获取乘组名单…</div></div>
       </div>
-      <div class="stats">
-        <div class="stat"><label>纬度</label><b id="tg-lat">--</b></div>
-        <div class="stat"><label>经度</label><b id="tg-lon">--</b></div>
-        <div class="stat"><label>高度</label><b id="tg-alt">--<u> km</u></b></div>
-        <div class="stat"><label>速度</label><b id="tg-vel">--<u> km/s</u></b></div>
-      </div>
-      <div class="meta-line" id="tg-meta">正在获取轨道数据…</div>
-      <div class="crew" id="tg-crew"><div class="crew-loading">正在获取乘组名单…</div></div>
     </section>
   </div>
 
   <div id="comm">
-    <button id="audioBtn">▶ 空地通话音频</button>
+    <!-- 折叠态:只显示按钮;展开态:youtube 嵌入填满 #comm -->
+    <button id="audioBtn" type="button">▶ 空地通话音频</button>
     <div id="audioBox" hidden aria-hidden="true">
       <div class="ab-bar" id="abBar">
         <span class="ab-title">🔊 NASA ISS · SPACE-TO-GROUND</span>
         <div class="ab-tools">
           <button class="ab-btn" id="abAudioOnly" type="button" title="仅音频:隐藏 YouTube 视频,只听通话音">仅音频</button>
-          <button class="ab-btn" id="abShape"     type="button" title="切换形状(圆角/方形/圆形)">形状</button>
-          <button class="ab-btn" id="abMinimize"  type="button" title="收起到右侧">收起</button>
-          <button class="ab-btn" id="abClose"     type="button" title="关闭">✕</button>
+          <button class="ab-btn" id="abMinimize"  type="button" title="收起">收起</button>
+          <button class="ab-btn" id="abClose"    type="button" title="关闭">✕</button>
         </div>
       </div>
       <div class="ab-frame" id="abFrame"></div>
-      <span class="ab-resize" id="abResize" title="拖拽调整大小"></span>
     </div>
-    <button id="abRestore" hidden aria-hidden="true" type="button"
-      title="恢复音频窗口"
-      style="position:fixed;right:14px;bottom:14px;z-index:61;
-        font-family:var(--num);font-size:2.4cqw;color:#02060f;background:var(--iss);
-        border:0;border-radius:24px;padding:.5cqh 2cqw;cursor:pointer;
-        box-shadow:0 4px 14px rgba(0,0,0,.55);letter-spacing:.12em;">🔊 恢复</button>
   </div>
 
   <div id="ticker"><span class="inner" id="tickerText">正在初始化轨道解算引擎…</span></div>
@@ -529,32 +498,46 @@ function resize(){
 function drawBase(){
   const c=baseCv.getContext('2d');
   c.clearRect(0,0,W,H);
-  /* 贴图优先 */
+  /* 贴图优先 — 加饱和与提亮,接近真实地球色彩 */
   if(bmLoaded&&blueMarble.width>1){
     c.drawImage(blueMarble,0,0,W,H);
-    /* 提亮 + 增绿:整体提亮,绿陆更明亮 */
     c.save();
+    /* 1) 先用更亮的同尺寸副本叠加、blur 些,模拟清晰化 */
     c.globalCompositeOperation='lighter';
-    c.fillStyle='rgba(40,80,40,.18)';c.fillRect(0,0,W,H);   /* 整体偏绿一点 */
-    c.fillStyle='rgba(60,110,70,.12)';c.fillRect(0,0,W,H);   /* 加强陆地 */
+    c.globalAlpha=.10;
+    c.drawImage(blueMarble,0,0,W,H);
+    c.globalAlpha=1;
     c.globalCompositeOperation='source-over';
-    /* 高光:加亮中段亮度 */
+    /* 2) 提亮 + 增饱和:office 用饱和 overlay */
+    c.filter='saturate(1.5) brightness(1.15)';
+    c.globalAlpha=.30;
+    c.drawImage(blueMarble,0,0,W,H);
+    c.filter='none';
+    c.globalAlpha=1;
+    /* 3) 一层绿加成 — 让陆地更接近鲜绿蓝 */
+    c.globalCompositeOperation='overlay';
+    c.fillStyle='rgba(70,120,80,.20)';c.fillRect(0,0,W,H);
+    c.globalCompositeOperation='source-over';
+    /* 4) 高光:顶/底微蓝边 */
     const grd=c.createLinearGradient(0,0,0,H);
-    grd.addColorStop(0,'rgba(170,210,255,.22)');
-    grd.addColorStop(.5,'rgba(180,245,180,.10)');
-    grd.addColorStop(1,'rgba(170,210,255,.22)');
+    grd.addColorStop(0,'rgba(170,210,255,.20)');
+    grd.addColorStop(.5,'rgba(180,245,180,.06)');
+    grd.addColorStop(1,'rgba(170,210,255,.20)');
     c.fillStyle=grd;c.fillRect(0,0,W,H);
     c.restore();
-    drawGrid(c,/*overlay*/true);     /* 轻量经纬网叠加在贴图右上 */
+    drawGrid(c,/*overlay*/true);
     return;
   }
-  /* 矢量回退:青蓝海洋 + 真实海岸线着色 */
+  /* 矢量回退:更亮的真实海洋青蓝 + 鲜绿大陆 */
   const sea=c.createLinearGradient(0,0,0,H);
-  sea.addColorStop(0,'#0c2148');
-  sea.addColorStop(.3,'#11447a');
-  sea.addColorStop(.7,'#0c3a6a');
-  sea.addColorStop(1,'#072b50');
+  sea.addColorStop(0,'#13508c');    /* 北极近青蓝 */
+  sea.addColorStop(.3,'#0068ad');   /* 高纬海面 */
+  sea.addColorStop(.6,'#0a69b5');   /* 大洋蓝 */
+  sea.addColorStop(.8,'#0072bd');   /* 赤道海蓝 */
+  sea.addColorStop(1,'#0a82c8');    /* 南极近青 */
   c.fillStyle=sea;c.fillRect(0,0,W,H);
+  /* 海面再叠一层轻微纹理 */
+  c.fillStyle='rgba(96,170,225,.10)';c.fillRect(0,0,W,H);
   drawGrid(c,false);
   drawLand(c);
   if(bmFailed===undefined||bmFailed===false){
@@ -576,12 +559,13 @@ function drawGrid(c,overlay){
 /* 矢量回退:用真实风格着色大陆轮廓(纬度配色) */
 function latColor(lat){
   const a=Math.abs(lat);
-  if(a>=78)return '#f0f6fb';        /* 极地冰盖:近白 */
-  if(a>=62)return '#d8e2e9';        /* 寒带:浅灰 */
-  if(a>=42)return '#5fbd6d';        /* 温带森林:深草绿 */
-  if(a>=23)return '#7ad44e';        /* 亚热带:鲜绿 */
-  if(a>=12)return '#c6d450';        /* 热带草原:亮黄绿 */
-  return '#e6c646';                 /* 沙漠:鲜黄棕 */
+  if(a>=78)return '#f6fbff';        /* 极地冰盖:近白 */
+  if(a>=62)return '#d8e6ec';        /* 寒带:浅灰 */
+  if(a>=45)return '#4fbb70';        /* 温带森林:深绿 */
+  if(a>=30)return '#5fcf6a';        /* 亚热带:鲜绿 */
+  if(a>=15)return '#86d35a';        /* 热带草原:亮绿 */
+  if(a>=10)return '#b8c938';        /* 半干旱:黄绿 */
+  return '#d6b13c';                 /* 沙漠:金黄棕 */
 }
 function drawLand(c){
   if(!worldGeo)return;
@@ -757,8 +741,8 @@ function drawMarker(st,t){
   /* 高亮中心白点便于视觉锁定 */
   ctx.fillStyle='#fff';
   ctx.beginPath();ctx.arc(x,y,1.0*DPR,0,7);ctx.fill();
-  /* 标签 */
-  const txt=`${st.label} · ${Math.round(st.geo.alt)}km`;
+  /* 标签 — 含高度与速度 */
+  const txt=`${st.label} · ${Math.round(st.geo.alt)}km · ${st.geo.vel.toFixed(2)}km/s`;
   ctx.font=`600 ${10*DPR}px Rajdhani,sans-serif`;
   const tw=ctx.measureText(txt).width;
   let lx=x+10*DPR,ly=y-7*DPR;
@@ -794,18 +778,9 @@ function tick(){
     st.geo=geoAt(st,now);
     const g=st.geo,k=st.key;
     if(!g)continue;
-    $(k+'-lat').textContent=fmtLat(g.lat);
-    $(k+'-lon').textContent=fmtLon(g.lon);
-    $(k+'-alt').innerHTML=g.alt.toFixed(1)+'<u> km</u>';
-    $(k+'-vel').innerHTML=g.vel.toFixed(2)+'<u> km/s</u>';
-    $('hud-'+k).textContent=`${fmtLat(g.lat)} ${fmtLon(g.lon)} · ${Math.round(g.alt)}km`;
-    if(st.satrec){
-      const incl=(st.satrec.inclo/RAD).toFixed(1);
-      const period=(2*Math.PI/st.satrec.no).toFixed(1);
-      const age=st.tleAge<1?`${Math.round(st.tleAge*24)}h前`:`${st.tleAge.toFixed(1)}天前`;
-      const warn=st.tleSrc==='offline'?' <span class="tle-warn">⚠ 离线TLE(可能过期)</span>':'';
-      $(k+'-meta').innerHTML=`轨道倾角 ${incl}° · 周期 ${period} min · TLE ${age} · ${st.tleSrc}${warn}`;
-    }
+    /* 卡片已被合并到乘组卡,不在卡片显示经纬高等;HUD 在地图右上是主信息源 */
+    const hud=$('hud-'+k);
+    if(hud)hud.textContent=`${fmtLat(g.lat)} ${fmtLon(g.lon)} · ${Math.round(g.alt)}km · ${g.vel.toFixed(2)}km/s`;
   }
 }
 setInterval(tick,1000);
@@ -856,6 +831,9 @@ function thumbURL(u){
 }
 function renderCrew(listId,people){
   const box=$(listId);box.innerHTML='';
+  /* 更新计数器 */
+  const cnt=$(listId.replace('crew','count'));
+  if(cnt)cnt.textContent=people.length+'人';
   if(!people.length){box.innerHTML='<div class="crew-error">暂无乘组数据</div>';return;}
   people.forEach(p=>box.appendChild(crewChip(p)));
 }
@@ -889,147 +867,47 @@ async function loadCrew(){
    原本基于 NASA ISSLive Lightstreamer 推送 AOS/LOS 状态与遥测时钟。
    按需求,空地区域仅保留"空地通话音频"按钮,遥测/状态日志不再展示。 ══ */
 /* NASA 空地通话音频(官方 ISS 常驻直播流,含 space-to-ground 音频)
-   音频框支持:隐藏 YouTube 视频、自由拖拽、自由缩放、收敛/恢复、形状切换。 */
+   新行为:
+   - 点击 #audioBtn -> audioBox 在 #comm 内展开,占满整个 #comm 区域自动适配大小
+   - 再次点击或点击 ✕ -> 折叠回按钮态
+   - 「仅音频」可隐藏 YouTube 视频画面、仅听通话音(40px 音轨条) */
 const YT_LIVE='https://www.youtube.com/embed/uwXgcTc8oY8?autoplay=1&modestbranding=1&rel=0';
 const YT_FALLBACK_HTML=`<div class="fallback">NASA 官方 ISS 直播 · 无法播放时
   <a href="https://www.youtube.com/@NASA/live" target="_blank" rel="noopener">去 YouTube 打开</a>
   <a href="https://plus.nasa.gov/scheduled-video/iss-live/" target="_blank" rel="noopener">NASA+</a></div>`;
-const audioBox=$('audioBox'),abFrame=$('abFrame'),abBar=$('abBar'),abRestore=$('abRestore');
+const audioBox=$('audioBox'),abFrame=$('abFrame'),audioBtn=$('audioBtn');
 let abOpen=false,abAudioOnly=false;
-const AB_SHAPES=['14px','2px','50%'];  /* 圆角/方形/圆形 三档 */
-let abShapeIdx=0;
 function audioBoxFrameInner(){
   abFrame.innerHTML=`<iframe src="${YT_LIVE}" allow="autoplay; encrypted-media" title="NASA ISS Live"></iframe>${YT_FALLBACK_HTML}`;
 }
 function setAudioOnly(on){
   abAudioOnly=on;
   abFrame.classList.toggle('audio-only',on);
-  $('abAudioOnly').classList.toggle('on',on);
-  $('abAudioOnly').textContent=on?'有声':'仅音频';
-}
-function setShape(idx){
-  abShapeIdx=idx%AB_SHAPES.length;
-  audioBox.style.setProperty('--ab-radius',String(AB_SHAPES[abShapeIdx]));
-}
-function placeAudioBoxInitial(){
-  /* 第一次打开:默认尺寸 70vw × 40vh,水平居中,垂直下方居中 */
-  const vw=window.innerWidth,vh=window.innerHeight;
-  const w=Math.min(1280,Math.max(280,vw*0.7));
-  const h=Math.min(vh*0.8,Math.max(200,vh*0.4));
-  audioBox.style.width=w+'px';
-  audioBox.style.height=h+'px';
-  audioBox.style.left=Math.max(8,(vw-w)/2)+'px';
-  audioBox.style.top=Math.max(8,(vh-h)/2)+'px';
-  audioBox.style.transform='none';
+  const btn=$('abAudioOnly');
+  btn.classList.toggle('on',on);
+  btn.textContent=on?'有声':'仅音频';
 }
 function openAudioBox(){
-  if(!abOpen){
-    audioBoxFrameInner();
-    if(!audioBox.style.width)placeAudioBoxInitial();
-    audioBox.hidden=false;
-    audioBox.setAttribute('aria-hidden','false');
-    abOpen=true;
-    abRestore.hidden=true;
-  }
+  if(abOpen)return;
+  audioBoxFrameInner();
+  audioBox.hidden=false;
+  audioBox.setAttribute('aria-hidden','false');
+  abOpen=true;
+  audioBtn.textContent='⏹ 关闭音频';
+  audioBtn.setAttribute('aria-expanded','true');
 }
 function closeAudioBox(){
   abFrame.innerHTML='';
   audioBox.hidden=true;
   audioBox.setAttribute('aria-hidden','true');
   abOpen=false;
+  audioBtn.textContent='▶ 空地通话音频';
+  audioBtn.setAttribute('aria-expanded','false');
 }
-function minimizeAudioBox(){
-  audioBox.hidden=true;
-  abFrame.innerHTML='';
-  abOpen=false;
-  abRestore.hidden=false;
-  abRestore.setAttribute('aria-hidden','false');
-}
-/* 主按钮:切换开/收 */
-$('audioBtn').addEventListener('click',()=>{
-  if(abOpen){minimizeAudioBox();$('audioBtn').textContent='▶ 空地通话音频';}
-  else{openAudioBox();$('audioBtn').textContent='⏹ 关闭音频';}
-});
-/* 工具栏按钮 */
+audioBtn.addEventListener('click',()=>{ abOpen?closeAudioBox():openAudioBox(); });
 $('abAudioOnly').addEventListener('click',()=>setAudioOnly(!abAudioOnly));
-$('abShape').addEventListener('click',()=>setShape(abShapeIdx+1));
-$('abMinimize').addEventListener('click',()=>{minimizeAudioBox();$('audioBtn').textContent='▶ 空地通话音频';});
-$('abClose').addEventListener('click',()=>{closeAudioBox();$('audioBtn').textContent='▶ 空地通话音频';});
-abRestore.addEventListener('click',()=>{openAudioBox();$('audioBtn').textContent='⏹ 关闭音频';});
-
-/* ── 拖拽 ── */
-let abDrag=null;
-abBar.addEventListener('pointerdown',e=>{
-  if(e.target.closest('.ab-btn'))return;
-  const r=audioBox.getBoundingClientRect();
-  abDrag={
-    sx:e.clientX,sy:e.clientY,
-    ox:r.left,oy:r.top,
-    pw:audioBox.offsetParent?audioBox.offsetParent.clientWidth:window.innerWidth,
-    ph:audioBox.offsetParent?audioBox.offsetParent.clientHeight:window.innerHeight,
-    w:r.width,h:r.height,
-  };
-  audioBox.style.position='fixed';
-  audioBox.style.left=r.left+'px';
-  audioBox.style.top=r.top+'px';
-  audioBox.style.transform='none';
-  audioBox.setPointerCapture(e.pointerId);
-});
-abBar.addEventListener('pointermove',e=>{
-  if(!abDrag)return;
-  let nx=abDrag.ox+(e.clientX-abDrag.sx);
-  let ny=abDrag.oy+(e.clientY-abDrag.sy);
-  const margin=4;
-  nx=Math.max(margin,Math.min(window.innerWidth-abDrag.w-margin,nx));
-  ny=Math.max(margin,Math.min(window.innerHeight-abDrag.h-margin,ny));
-  audioBox.style.left=nx+'px';
-  audioBox.style.top=ny+'px';
-});
-abBar.addEventListener('pointerup',e=>{
-  if(!abDrag)return;
-  abDrag=null;
-  try{audioBox.releasePointerCapture(e.pointerId);}catch(err){}
-});
-abBar.addEventListener('pointercancel',()=>abDrag=null);
-
-/* ── 缩放(右下角) ── */
-const abResize=$('abResize');
-let abRz=null;
-abResize.addEventListener('pointerdown',e=>{
-  e.preventDefault();e.stopPropagation();
-  const r=audioBox.getBoundingClientRect();
-  abRz={sx:e.clientX,sy:e.clientY,w:r.width,h:r.height};
-  audioBox.style.aspectRatio='auto';
-  audioBox.setPointerCapture(e.pointerId);
-});
-abResize.addEventListener('pointermove',e=>{
-  if(!abRz)return;
-  let nw=abRz.w+(e.clientX-abRz.sx);
-  let nh=abRz.h+(e.clientY-abRz.sy);
-  nw=Math.max(280,Math.min(window.innerWidth-12,nw));
-  nh=Math.max(200,Math.min(window.innerHeight-12,nh));
-  audioBox.style.width=nw+'px';
-  audioBox.style.height=nh+'px';
-});
-abResize.addEventListener('pointerup',e=>{
-  if(!abRz)return;
-  abRz=null;
-  try{audioBox.releasePointerCapture(e.pointerId);}catch(err){}
-});
-abResize.addEventListener('pointercancel',()=>abRz=null);
-
-/* 浏览器窗口变化时把窗口锁回可视范围 */
-window.addEventListener('resize',()=>{
-  if(audioBox.hidden)return;
-  const r=audioBox.getBoundingClientRect();
-  if(r.right>window.innerWidth){
-    audioBox.style.left=Math.max(4,window.innerWidth-r.width-4)+'px';
-  }
-  if(r.bottom>window.innerHeight){
-    audioBox.style.top=Math.max(4,window.innerHeight-r.height-4)+'px';
-  }
-});
-setShape(0);
+$('abMinimize').addEventListener('click',closeAudioBox);
+$('abClose').addEventListener('click',closeAudioBox);
 
 /* ══ 底部滚动条 ═════════════════════════ */
 function updateTicker(){
