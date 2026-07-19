@@ -158,8 +158,16 @@ h1 small{
   box-shadow:0 0 1cqw var(--c);
 }
 .crew-block-title em{
-  font-style:normal;margin-left:auto;color:var(--c);
+  font-style:normal;color:var(--c);
   font-family:var(--num);font-weight:700;font-size:2.6cqw;
+  flex-shrink:0;
+}
+/* 经纬度/高度/速度 meta 文字(在标题里,名字与人数之间) */
+.crew-block-meta{
+  font-family:var(--num);font-weight:500;font-size:2.1cqw;
+  color:var(--dim);letter-spacing:.02em;
+  margin:0 .8cqw 0 auto;  /* 把 em (人数) 推到最右,自己靠在名称之后 */
+  text-shadow:0 1px 2px rgba(2,6,15,.7);
 }
 /* 背景层 */
 .crew-bg{
@@ -200,7 +208,8 @@ h1 small{
   grid-template-columns:repeat(auto-fill,minmax(8.5cqw,1fr));
   grid-auto-rows:min-content;
   gap:.8cqw .5cqw;
-  align-content:center;
+  align-content:start;   /* 左上对齐 — 头像从左上角依次排列 */
+  justify-items:start;   /* 每个 chip 在自己格子里也左对齐 */
   overflow:auto;
   align-self:stretch;
 }
@@ -265,10 +274,7 @@ h1 small{
 
   <div id="mapWrap">
     <canvas id="map"></canvas>
-    <div class="map-hud">
-      <div class="hud-row" style="--c:var(--iss)"><i></i><em>ISS</em><span id="hud-iss">定位中…</span></div>
-      <div class="hud-row" style="--c:var(--tg)"><i></i><em>天宫</em><span id="hud-tg">定位中…</span></div>
-    </div>
+    <!-- HUD 移除:经纬度/高度/速度 不再在地图上显示,避免遮挡地图。改在卡片标题显示 -->
     <div class="map-legend">━ 轨道预测 90 min · 阴影为夜半球</div>
   </div>
 
@@ -280,7 +286,11 @@ h1 small{
       </div>
       <!-- ISS 分组:背景为 YouTube 嵌入 -->
       <div class="crew-block" id="crew-block-iss" style="--c:var(--iss)">
-        <div class="crew-block-title"><i></i>ISS 国际空间站 <em id="iss-count">--</em></div>
+        <div class="crew-block-title">
+          <i></i>ISS 国际空间站
+          <span class="crew-block-meta" id="crew-iss-meta">定位中…</span>
+          <em id="iss-count">--</em>
+        </div>
         <div class="crew-bg">
           <iframe id="YT_ISS" title="NASA ISS Live" allow="autoplay; encrypted-media; accelerometer; gyroscope; picture-in-picture; web-share; fullscreen; enablejsapi" allowfullscreen></iframe>
           <div class="crew-bg-dim"></div>
@@ -289,7 +299,11 @@ h1 small{
       </div>
       <!-- 天宫分组:背景为天宫高清照片 -->
       <div class="crew-block" id="crew-block-tg" style="--c:var(--tg)">
-        <div class="crew-block-title"><i></i>天宫 中国空间站 <em id="tg-count">--</em></div>
+        <div class="crew-block-title">
+          <i></i>天宫 中国空间站
+          <span class="crew-block-meta" id="crew-tg-meta">定位中…</span>
+          <em id="tg-count">--</em>
+        </div>
         <div class="crew-bg">
           <img class="crew-bg-static" alt="天宫空间站官方高清图" loading="lazy"/>
           <div class="crew-bg-dim"></div>
@@ -738,9 +752,9 @@ function tick(){
     st.geo=geoAt(st,now);
     const g=st.geo,k=st.key;
     if(!g)continue;
-    /* 卡片已被合并到乘组卡,不在卡片显示经纬高等;HUD 在地图右上是主信息源 */
-    const hud=$('hud-'+k);
-    if(hud)hud.textContent=`${fmtLat(g.lat)} ${fmtLon(g.lon)} · ${Math.round(g.alt)}km · ${g.vel.toFixed(2)}km/s`;
+    /* 经纬度/高度/速度 在卡片标题里显示(主界面 HUD 不再显示,避免遮挡地图) */
+    const meta=$('crew-'+k+'-meta');
+    if(meta)meta.textContent=`${fmtLat(g.lat)} ${fmtLon(g.lon)} · ${Math.round(g.alt)}km · ${g.vel.toFixed(2)}km/s`;
   }
 }
 setInterval(tick,1000);
@@ -837,13 +851,19 @@ async function loadCrew(){
    - 双 URL 容灾机制:首选 live_stream channel 形式,失败则切换到 video 形式,
    实际在主流浏览器(OBS / Chrome / Safari / Firefox)中可正常播放。 */
 
-const YT_ISS_PRIMARY='https://www.youtube-nocookie.com/embed/live_stream?channel=UCryGec9PvUx6lB4i7a5NSw&autoplay=1&mute=1&playsinline=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3';
-const YT_ISS_BACKUP ='https://www.youtube-nocookie.com/embed/uwXgcTc8oY8?autoplay=1&mute=1&playsinline=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3';
+/* ISS 卡片背景 — 嵌入 ISS Live 实时地球俯瞰直播。
+   经实测,NASA 官方 uwXgcTc8oY8 在 YouTube 上已禁止嵌入,
+   错误 153 显示"视频播放器配置错误"。
+   改用 ISS Live 频道 @liveiss 公开允许嵌入的视频(video id 来自此频道):
+     5o7dz41FNPg = NASA Live Stream 4K - View Earth from Space (ISS Live Feed)
+     t6UWFH7dm_s = NASA Live Stream 4K - 第二段 ISS 录像
+   使用 youtube-nocookie 域允许无 cookie 嵌入,带完整 allow 属性。 */
+const YT_ISS_PRIMARY='https://www.youtube-nocookie.com/embed/5o7dz41FNPg?autoplay=1&mute=1&loop=1&playlist=5o7dz41FNPg&playsinline=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1';
+const YT_ISS_BACKUP ='https://www.youtube-nocookie.com/embed/t6UWFH7dm_s?autoplay=1&mute=1&loop=1&playlist=t6UWFH7dm_s&playsinline=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1';
 
-/* 天宫高清静图 CMSA / NASA 公开 image(宽 1536×864, webp 可用) */
-/* 经验证可用 · 中国空间站组合体 */
-const TG_STATICIMG='https://www.cmse.gov.cn/art/2022/9/29/art_459_53644.html';  /* placeholder: JS 中替换为真实 JPG */
-const TG_BG_URL='https://www.nasa.gov/wp-content/uploads/2022/11/iss-0.jpg';
+/* 天宫高清静图 — 已下载到本地 assets/ 目录（规避 Wikimedia 防盗链 + CORS） */
+const TG_BG_URL='assets/tiangong-spacewalk.jpg';
+const TG_BG_URL2='assets/tiangong-rear.jpg';
 
 /* 启动 ISS 直播 iframe */
 function startISSLiveStream(){
@@ -861,13 +881,12 @@ function issStreamFallback(){
 function startTiangongBackground(){
   const img=document.querySelector('#crew-block-tg .crew-bg-static');
   if(!img)return;
-  /* 设置多个候选 URL,第一个失败即跳到下一个 */
-  img.src=TG_BG_URL;
   img.onerror=()=>{
     if(img.dataset.fallback==='1'){return;}
     img.dataset.fallback='1';
-    img.src='https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/China_space_station_group_photo.jpg/1280px-China_space_station_group_photo.jpg';
+    img.src=TG_BG_URL2;       /* 主图加载失败 -> 切到备援 */
   };
+  img.src=TG_BG_URL;
 }
 
 startISSLiveStream();
