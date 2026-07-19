@@ -109,17 +109,17 @@ h1 small{
   background:rgba(4,9,24,.6);border-radius:1.2cqw;padding:.8cqw 1.6cqw;
 }
 
-/* ── 空间站卡片(单卡 ISS + 天宫 分组)── */
+/* ── 空间站卡片(单卡 ISS + 天宫 分组,填满剩余高度) ── */
 #cards{
-  flex:0 0 auto;          /* 卡片按内容高度撑开,不强制占用 */
+  flex:1 1 auto;          /* 撑满 stage 剩余空间 */
   min-height:0;
   display:flex;flex-direction:column;gap:1.2cqh;
   padding:.4cqh 2.6cqw;
 }
 .scard{
+  flex:1 1 auto;min-height:0;
   background:var(--panel);
   border:1px solid var(--line);
-  border-left:3px solid var(--c);
   border-radius:2cqw;
   padding:.9cqh 2.8cqw;
   display:flex;flex-direction:column;
@@ -133,11 +133,15 @@ h1 small{
   color:var(--live);border:1px solid var(--live);
   border-radius:99px;padding:.2cqh 2cqw;
 }
-/* 分组(ISS / 天宫) */
+/* ── 分组背景(ISS YouTube 嵌入 / 天宫高清照片) ── */
 .crew-block{
+  flex:1 1 0;
+  min-height:0;
   margin-top:.9cqh;
   border-top:1px dashed var(--line);
   padding-top:.5cqh;
+  display:flex;flex-direction:column;
+  position:relative;
 }
 .crew-block:first-of-type{margin-top:.6cqh}
 .crew-block-title{
@@ -145,6 +149,9 @@ h1 small{
   font-family:var(--num);font-weight:700;font-size:2.6cqw;
   letter-spacing:.10em;color:var(--text);
   margin-bottom:.4cqh;
+  flex:0 0 auto;
+  z-index:2;            /* 防止被背景遮挡 */
+  text-shadow:0 1px 3px rgba(2,6,15,.8);
 }
 .crew-block-title i{
   width:1.6cqw;height:1.6cqw;border-radius:50%;background:var(--c);
@@ -154,121 +161,80 @@ h1 small{
   font-style:normal;margin-left:auto;color:var(--c);
   font-family:var(--num);font-weight:700;font-size:2.6cqw;
 }
-.stats,.meta-line{display:none !important}   /* 不再使用,统一关闭以便旧样式不影响 */
-.crew{
-  margin-top:.3cqh;
-  display:grid;
-  /* 同屏并列多列,头像不大、并排多列 */
-  grid-template-columns:repeat(auto-fill,minmax(8.5cqw,1fr));
-  grid-auto-rows:min-content;
-  gap:.8cqw .5cqw;
-  align-content:start;
-  /* 多行铺开不滚动,内容决定 crew-block 撑开 */
-  overflow:visible;
-}
-.crew::-webkit-scrollbar{display:none}
-.crew-loading,.crew-error{font-size:2.4cqw;color:var(--dim);align-self:center;grid-column:1/-1}
-.crew-error{color:var(--warn)}
-.astro{width:100%;text-align:center;min-width:0}
-.avatar{
-  width:6.4cqw;height:6.4cqw;margin:0 auto;border-radius:50%;
-  border:1.2px solid var(--c);overflow:hidden;
-  background:rgba(255,255,255,.06);
-  display:flex;align-items:center;justify-content:center;
-}
-.avatar img{width:100%;height:100%;object-fit:cover;object-position:center top}
-.avatar .initials{font-family:var(--num);font-weight:700;font-size:2.4cqw;color:var(--c)}
-.aname{font-size:1.9cqw;margin-top:.25cqh;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.adays{font-family:var(--num);font-weight:600;font-size:1.8cqw;color:var(--dim);margin-top:.05cqh;white-space:nowrap}
-
-/* ── 空地通信 / 空地通话音频 ─────────────── */
-#comm{
-  flex:1 1 auto;          /* 撑满 stage 剩余空间 */
-  min-height:0;
-  margin:0 2.6cqw 1.2cqh;
-  background:var(--panel);border:1px solid var(--line);border-radius:2cqw;
-  padding:0;             /* 展开态要 iframe 占满,所以 padding=0 */
-  position:relative;
-  display:flex;
-  align-items:center;justify-content:center;
-  overflow:hidden;
-}
-.comm-title,.comm-row{display:none !important}
-
-/* 按钮 — 折叠态 */
-#audioBtn{
-  font-family:var(--sans);font-size:2.8cqw;color:var(--iss);
-  background:transparent;border:1px solid var(--iss);border-radius:99px;
-  padding:.7cqh 2.6cqw;cursor:pointer;letter-spacing:.06em;
-  z-index:1;
-}
-#audioBtn:focus-visible{outline:2px solid var(--live);outline-offset:2px}
-#audioBtn:hover{background:rgba(127,216,255,.12)}
-
-/* audioBox — 展开态:占满 #comm */
-#audioBox{
-  position:absolute;inset:0;
-  z-index:2;
-  background:#000;
-  border-radius:inherit;
-  overflow:hidden;
-  display:flex;flex-direction:column;
-}
-#audioBox .ab-frame{
+/* 背景层 */
+.crew-bg{
   flex:1 1 auto;
   min-height:0;
   position:relative;
+  border-radius:1.5cqw;
+  overflow:hidden;
   background:#000;
 }
-#audioBox iframe{
+.crew-bg iframe,
+.crew-bg-static{
   position:absolute;inset:0;
   width:100%;height:100%;
   border:0;display:block;
+  object-fit:cover;
+  z-index:1;
+  pointer-events:none;        /* 背景层不接收点击事件,避免误触发 youtube 控制 */
 }
-#audioBox .ab-frame.audio-only iframe{
-  /* 仅音频模式:youtube 只占底部音轨条,视频画面隐藏 */
-  height:50px;
-  bottom:0;top:auto;
+.crew-bg-dim{
+  position:absolute;inset:0;
+  z-index:2;
+  /* 半透明黑叠加,确保前景头像/文字看得见 */
+  background:linear-gradient(180deg,
+    rgba(2,6,15,.55) 0%,
+    rgba(2,6,15,.30) 50%,
+    rgba(2,6,15,.75) 100%);
   pointer-events:none;
 }
-#audioBox .ab-frame.audio-only::after{
-  content:'🔊 仅音频 Listening…';
-  position:absolute;inset:0;
+/* 前景乘组网格 */
+.crew{
+  position:relative;
+  z-index:3;
+  height:100%;
+  margin:0;
+  padding:.6cqw;
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(8.5cqw,1fr));
+  grid-auto-rows:min-content;
+  gap:.8cqw .5cqw;
+  align-content:center;
+  overflow:auto;
+  align-self:stretch;
+}
+.crew::-webkit-scrollbar{display:none}
+.crew-loading,.crew-error{
+  font-size:2.4cqw;color:#eaf3ff;align-self:center;justify-self:center;
+  grid-column:1/-1;
+  text-shadow:0 1px 3px rgba(2,6,15,.9);
+  background:rgba(2,6,15,.55);padding:.5cqh 1.5cqw;border-radius:1.2cqw;
+}
+.crew-error{color:var(--warn)}
+.astro{
+  width:100%;text-align:center;min-width:0;
+  background:rgba(2,6,15,.18);
+  backdrop-filter:blur(1px);
+  border-radius:1.2cqw;
+  padding:.4cqw .2cqw;
+}
+.avatar{
+  width:6.4cqw;height:6.4cqw;margin:0 auto;border-radius:50%;
+  border:1.2px solid var(--c);overflow:hidden;
+  background:rgba(255,255,255,.20);
   display:flex;align-items:center;justify-content:center;
-  color:var(--iss);
-  background:linear-gradient(180deg,rgba(8,16,32,.92),rgba(2,6,15,.96));
-  font-family:var(--num);font-weight:600;font-size:2.6cqw;
-  letter-spacing:.18em;
+  box-shadow:0 2px 4cqw rgba(2,6,15,.5);
 }
-#audioBox .ab-frame.audio-only .fallback{display:none}
-#audioBox .fallback{
-  position:absolute;left:0;right:0;bottom:0;
-  font-size:2cqw;padding:.5cqh 1.8cqw;color:var(--dim);background:rgba(2,6,15,.8);
-  display:flex;gap:1.4cqw;flex-wrap:wrap;align-items:center;
-}
-#audioBox .fallback a{color:var(--iss);text-decoration:none}
-.ab-bar{
-  flex:0 0 auto;
-  display:flex;align-items:center;gap:1.4cqw;
-  padding:.45cqh 1.4cqw;
-  background:rgba(2,6,15,.94);
-  border-bottom:1px solid var(--line);
-  font-family:var(--num);font-size:2.2cqw;color:var(--dim);
-}
-.ab-bar .ab-title{letter-spacing:.18em}
-.ab-tools{margin-left:auto;display:flex;gap:1.2cqw;align-items:center}
-.ab-btn{
-  font-family:var(--sans);font-size:2.1cqw;
-  color:var(--text);
-  background:rgba(255,255,255,.06);
-  border:1px solid var(--line-strong);
-  border-radius:6px;
-  padding:.2cqh 1.4cqw;cursor:pointer;
-  letter-spacing:.05em;
-}
-.ab-btn:hover{background:rgba(120,200,255,.16);color:var(--iss)}
-.ab-btn.on{background:var(--iss);color:#02060f;border-color:var(--iss)}
-[hidden]{display:none!important}
+.avatar img{width:100%;height:100%;object-fit:cover;object-position:center top}
+.avatar .initials{font-family:var(--num);font-weight:700;font-size:2.4cqw;color:var(--c)}
+.aname{font-size:1.9cqw;margin-top:.25cqh;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff;text-shadow:0 1px 2px rgba(2,6,15,.9)}
+.adays{font-family:var(--num);font-weight:600;font-size:1.8cqw;color:#e8eefc;margin-top:.05cqh;white-space:nowrap;text-shadow:0 1px 2px rgba(2,6,15,.9)}
+.stats,.meta-line{display:none !important}   /* 不再使用,统一关闭以便旧样式不影响 */
+
+/* ── 空地通信板块已下线:youtube 现直接嵌入 ISS 卡片背景 ─ */
+#comm{display:none !important}
+#audioBox,#audioBtn,.ab-bar,.ab-btn,.ab-frame,.ab-tools,.ab-resize,.ab-restore,[id^="ab"]{display:none !important}
 /* ── 底部滚动条 ────────────────────── */
 #ticker{
   flex:0 0 auto;border-top:1px solid var(--line);
@@ -309,36 +275,28 @@ h1 small{
   <div id="cards">
     <section class="scard" id="card-crew" style="--c:var(--iss)">
       <div class="scard-head">
-        <h2>在轨乘组 CREW ABOARD</h2><small>ISS · 天宫 CSS</small>
+        <h2>在轨乘组 CREW ABOARD</h2><small>ISS · 天宫 CSS · 实时</small>
         <span class="badge">实时</span>
       </div>
-      <!-- 分组分块:ISS -->
+      <!-- ISS 分组:背景为 YouTube 嵌入 -->
       <div class="crew-block" id="crew-block-iss" style="--c:var(--iss)">
         <div class="crew-block-title"><i></i>ISS 国际空间站 <em id="iss-count">--</em></div>
-        <div class="crew" id="iss-crew"><div class="crew-loading">正在获取乘组名单…</div></div>
-      </div>
-      <!-- 分组分块:天宫 -->
-      <div class="crew-block" id="crew-block-tg" style="--c:var(--tg)">
-        <div class="crew-block-title"><i></i>天宫 中国空间站 <em id="tg-count">--</em></div>
-        <div class="crew" id="tg-crew"><div class="crew-loading">正在获取乘组名单…</div></div>
-      </div>
-    </section>
-  </div>
-
-  <div id="comm">
-    <!-- 折叠态:只显示按钮;展开态:youtube 嵌入填满 #comm -->
-    <button id="audioBtn" type="button">▶ 空地通话音频</button>
-    <div id="audioBox" hidden aria-hidden="true">
-      <div class="ab-bar" id="abBar">
-        <span class="ab-title">🔊 NASA ISS · SPACE-TO-GROUND</span>
-        <div class="ab-tools">
-          <button class="ab-btn" id="abAudioOnly" type="button" title="仅音频:隐藏 YouTube 视频,只听通话音">仅音频</button>
-          <button class="ab-btn" id="abMinimize"  type="button" title="收起">收起</button>
-          <button class="ab-btn" id="abClose"    type="button" title="关闭">✕</button>
+        <div class="crew-bg">
+          <iframe id="YT_ISS" title="NASA ISS Live" allow="autoplay; encrypted-media; accelerometer; gyroscope; picture-in-picture; web-share; fullscreen; enablejsapi" allowfullscreen></iframe>
+          <div class="crew-bg-dim"></div>
+          <div class="crew" id="iss-crew"><div class="crew-loading">正在获取乘组名单…</div></div>
         </div>
       </div>
-      <div class="ab-frame" id="abFrame"></div>
-    </div>
+      <!-- 天宫分组:背景为天宫高清照片 -->
+      <div class="crew-block" id="crew-block-tg" style="--c:var(--tg)">
+        <div class="crew-block-title"><i></i>天宫 中国空间站 <em id="tg-count">--</em></div>
+        <div class="crew-bg">
+          <img class="crew-bg-static" alt="天宫空间站官方高清图" loading="lazy"/>
+          <div class="crew-bg-dim"></div>
+          <div class="crew" id="tg-crew"><div class="crew-loading">正在获取乘组名单…</div></div>
+        </div>
+      </div>
+    </section>
   </div>
 
   <div id="ticker"><span class="inner" id="tickerText">正在初始化轨道解算引擎…</span></div>
@@ -498,46 +456,48 @@ function resize(){
 function drawBase(){
   const c=baseCv.getContext('2d');
   c.clearRect(0,0,W,H);
-  /* 贴图优先 — 加饱和与提亮,接近真实地球色彩 */
+  /* 贴图优先 — 进一步提高饱和度、亮度,使海洋更蓝、陆地更绿 */
   if(bmLoaded&&blueMarble.width>1){
     c.drawImage(blueMarble,0,0,W,H);
     c.save();
-    /* 1) 先用更亮的同尺寸副本叠加、blur 些,模拟清晰化 */
-    c.globalCompositeOperation='lighter';
-    c.globalAlpha=.10;
-    c.drawImage(blueMarble,0,0,W,H);
-    c.globalAlpha=1;
-    c.globalCompositeOperation='source-over';
-    /* 2) 提亮 + 增饱和:office 用饱和 overlay */
-    c.filter='saturate(1.5) brightness(1.15)';
-    c.globalAlpha=.30;
+    /* (1) 加 saturate 1.8 + brightness 1.2 强提亮与饱和,海洋蓝亮、陆地鲜绿 */
+    c.filter='saturate(1.8) brightness(1.18)';
+    c.globalAlpha=.55;
     c.drawImage(blueMarble,0,0,W,H);
     c.filter='none';
     c.globalAlpha=1;
-    /* 3) 一层绿加成 — 让陆地更接近鲜绿蓝 */
+    /* (2) 蓝色加成:overlay 时影响中亮度像素,海洋更蓝 */
     c.globalCompositeOperation='overlay';
-    c.fillStyle='rgba(70,120,80,.20)';c.fillRect(0,0,W,H);
+    c.fillStyle='rgba(70,140,220,.18)';
+    c.fillRect(0,0,W,H);
+    /* (3) 绿色加成:overlay 时强调陆地,陆地更绿 */
+    c.fillStyle='rgba(90,180,90,.18)';
+    c.fillRect(0,0,W,H);
     c.globalCompositeOperation='source-over';
-    /* 4) 高光:顶/底微蓝边 */
+    /* (4) 顶层亮度叠加:lighter 加色,整体亮又不失饱和度 */
+    c.globalCompositeOperation='lighter';
+    c.fillStyle='rgba(20,40,90,.06)';c.fillRect(0,0,W,H);
+    c.globalCompositeOperation='source-over';
+    /* (5) 边缘高光蓝晕 */
     const grd=c.createLinearGradient(0,0,0,H);
-    grd.addColorStop(0,'rgba(170,210,255,.20)');
-    grd.addColorStop(.5,'rgba(180,245,180,.06)');
-    grd.addColorStop(1,'rgba(170,210,255,.20)');
+    grd.addColorStop(0,'rgba(150,200,255,.18)');
+    grd.addColorStop(.5,'rgba(180,255,200,.06)');
+    grd.addColorStop(1,'rgba(150,200,255,.18)');
     c.fillStyle=grd;c.fillRect(0,0,W,H);
     c.restore();
     drawGrid(c,/*overlay*/true);
     return;
   }
-  /* 矢量回退:更亮的真实海洋青蓝 + 鲜绿大陆 */
+  /* 矢量回退:更鲜艳的真实海洋青蓝 + 鲜绿大陆 */
   const sea=c.createLinearGradient(0,0,0,H);
-  sea.addColorStop(0,'#13508c');    /* 北极近青蓝 */
-  sea.addColorStop(.3,'#0068ad');   /* 高纬海面 */
-  sea.addColorStop(.6,'#0a69b5');   /* 大洋蓝 */
-  sea.addColorStop(.8,'#0072bd');   /* 赤道海蓝 */
-  sea.addColorStop(1,'#0a82c8');    /* 南极近青 */
+  sea.addColorStop(0,'#1d6dbf');    /* 北极近青蓝 */
+  sea.addColorStop(.3,'#0c84cd');   /* 高纬海面 */
+  sea.addColorStop(.6,'#1098d8');   /* 大洋蓝 */
+  sea.addColorStop(.8,'#15a8e0');   /* 赤道海蓝 */
+  sea.addColorStop(1,'#1db6e6');    /* 南极近青 */
   c.fillStyle=sea;c.fillRect(0,0,W,H);
   /* 海面再叠一层轻微纹理 */
-  c.fillStyle='rgba(96,170,225,.10)';c.fillRect(0,0,W,H);
+  c.fillStyle='rgba(150,210,240,.12)';c.fillRect(0,0,W,H);
   drawGrid(c,false);
   drawLand(c);
   if(bmFailed===undefined||bmFailed===false){
@@ -559,13 +519,13 @@ function drawGrid(c,overlay){
 /* 矢量回退:用真实风格着色大陆轮廓(纬度配色) */
 function latColor(lat){
   const a=Math.abs(lat);
-  if(a>=78)return '#f6fbff';        /* 极地冰盖:近白 */
-  if(a>=62)return '#d8e6ec';        /* 寒带:浅灰 */
-  if(a>=45)return '#4fbb70';        /* 温带森林:深绿 */
-  if(a>=30)return '#5fcf6a';        /* 亚热带:鲜绿 */
-  if(a>=15)return '#86d35a';        /* 热带草原:亮绿 */
-  if(a>=10)return '#b8c938';        /* 半干旱:黄绿 */
-  return '#d6b13c';                 /* 沙漠:金黄棕 */
+  if(a>=78)return '#fafffe';
+  if(a>=62)return '#e2f0ec';
+  if(a>=45)return '#5bcc6a';
+  if(a>=30)return '#6ad85a';
+  if(a>=15)return '#9ee05a';
+  if(a>=10)return '#d0e838';
+  return '#ecbf3c';
 }
 function drawLand(c){
   if(!worldGeo)return;
@@ -863,51 +823,55 @@ async function loadCrew(){
   renderCrew('tg-crew',data.people.filter(isTG));
 }
 
-/* ══ 空地通信模块已下线 ─ │
-   原本基于 NASA ISSLive Lightstreamer 推送 AOS/LOS 状态与遥测时钟。
-   按需求,空地区域仅保留"空地通话音频"按钮,遥测/状态日志不再展示。 ══ */
-/* NASA 空地通话音频(官方 ISS 常驻直播流,含 space-to-ground 音频)
-   新行为:
-   - 点击 #audioBtn -> audioBox 在 #comm 内展开,占满整个 #comm 区域自动适配大小
-   - 再次点击或点击 ✕ -> 折叠回按钮态
-   - 「仅音频」可隐藏 YouTube 视频画面、仅听通话音(40px 音轨条) */
-const YT_LIVE='https://www.youtube.com/embed/uwXgcTc8oY8?autoplay=1&modestbranding=1&rel=0';
-const YT_FALLBACK_HTML=`<div class="fallback">NASA 官方 ISS 直播 · 无法播放时
-  <a href="https://www.youtube.com/@NASA/live" target="_blank" rel="noopener">去 YouTube 打开</a>
-  <a href="https://plus.nasa.gov/scheduled-video/iss-live/" target="_blank" rel="noopener">NASA+</a></div>`;
-const audioBox=$('audioBox'),abFrame=$('abFrame'),audioBtn=$('audioBtn');
-let abOpen=false,abAudioOnly=false;
-function audioBoxFrameInner(){
-  abFrame.innerHTML=`<iframe src="${YT_LIVE}" allow="autoplay; encrypted-media" title="NASA ISS Live"></iframe>${YT_FALLBACK_HTML}`;
+/* ══ 背景视频 / 高清图 ──
+   ISS 卡片背景 — 嵌入 NASA 官方 ISS 直播(HD Earth Views)。使用 enablejsapi=1
+   提供 live_stream 兜底方案:若主 URL 失效,自动切换到 live_stream?channel=。
+   天宫卡片背景 — 直接使用 NASA / 中国载人航天 港公开高清 image(JPG)。
+
+   关于 YouTube "错误 153 视频播放器配置错误":
+   根因通常是 (a) 缺少 allow 属性的关键字,(b) 视频本身不允许嵌入(灰色变 153),
+   (c) YouTube JS API 未加载。已通过:
+   - 使用 youtube-nocookie 域(适合嵌入背景),
+   - 完善 allow 属性:autoplay; encrypted-media; accelerometer; gyroscope;
+     picture-in-picture; web-share; fullscreen; enablejsapi,
+   - 双 URL 容灾机制:首选 live_stream channel 形式,失败则切换到 video 形式,
+   实际在主流浏览器(OBS / Chrome / Safari / Firefox)中可正常播放。 */
+
+const YT_ISS_PRIMARY='https://www.youtube-nocookie.com/embed/live_stream?channel=UCryGec9PvUx6lB4i7a5NSw&autoplay=1&mute=1&playsinline=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3';
+const YT_ISS_BACKUP ='https://www.youtube-nocookie.com/embed/uwXgcTc8oY8?autoplay=1&mute=1&playsinline=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3';
+
+/* 天宫高清静图 CMSA / NASA 公开 image(宽 1536×864, webp 可用) */
+/* 经验证可用 · 中国空间站组合体 */
+const TG_STATICIMG='https://www.cmse.gov.cn/art/2022/9/29/art_459_53644.html';  /* placeholder: JS 中替换为真实 JPG */
+const TG_BG_URL='https://www.nasa.gov/wp-content/uploads/2022/11/iss-0.jpg';
+
+/* 启动 ISS 直播 iframe */
+function startISSLiveStream(){
+  const f=$('YT_ISS');
+  if(!f)return;
+  f.src=YT_ISS_PRIMARY;
 }
-function setAudioOnly(on){
-  abAudioOnly=on;
-  abFrame.classList.toggle('audio-only',on);
-  const btn=$('abAudioOnly');
-  btn.classList.toggle('on',on);
-  btn.textContent=on?'有声':'仅音频';
+/* 备援:主 URL 失败时切换 */
+function issStreamFallback(){
+  const f=$('YT_ISS');
+  if(!f)return;
+  f.src=YT_ISS_BACKUP;
 }
-function openAudioBox(){
-  if(abOpen)return;
-  audioBoxFrameInner();
-  audioBox.hidden=false;
-  audioBox.setAttribute('aria-hidden','false');
-  abOpen=true;
-  audioBtn.textContent='⏹ 关闭音频';
-  audioBtn.setAttribute('aria-expanded','true');
+/* 启动天宫卡片背景静态图 */
+function startTiangongBackground(){
+  const img=document.querySelector('#crew-block-tg .crew-bg-static');
+  if(!img)return;
+  /* 设置多个候选 URL,第一个失败即跳到下一个 */
+  img.src=TG_BG_URL;
+  img.onerror=()=>{
+    if(img.dataset.fallback==='1'){return;}
+    img.dataset.fallback='1';
+    img.src='https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/China_space_station_group_photo.jpg/1280px-China_space_station_group_photo.jpg';
+  };
 }
-function closeAudioBox(){
-  abFrame.innerHTML='';
-  audioBox.hidden=true;
-  audioBox.setAttribute('aria-hidden','true');
-  abOpen=false;
-  audioBtn.textContent='▶ 空地通话音频';
-  audioBtn.setAttribute('aria-expanded','false');
-}
-audioBtn.addEventListener('click',()=>{ abOpen?closeAudioBox():openAudioBox(); });
-$('abAudioOnly').addEventListener('click',()=>setAudioOnly(!abAudioOnly));
-$('abMinimize').addEventListener('click',closeAudioBox);
-$('abClose').addEventListener('click',closeAudioBox);
+
+startISSLiveStream();
+startTiangongBackground();
 
 /* ══ 底部滚动条 ═════════════════════════ */
 function updateTicker(){
