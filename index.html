@@ -799,18 +799,69 @@ function drawMarker(st,t){
   /* 高亮中心白点便于视觉锁定 */
   ctx.fillStyle='#fff';
   ctx.beginPath();ctx.arc(x,y,1.6*SC,0,7);ctx.fill();
-  /* 标签 — 含高度与速度。
-     3% 地图宽度, 下限 14px */
-  const txt=`${st.label} · ${Math.round(st.geo.alt)}km · ${st.geo.vel.toFixed(2)}km/s`;
-  const fontPx=Math.max(14, 3.0*SC);  /* 3% 地图宽度, 下限 14px */
-  ctx.font=`700 ${fontPx}px Rajdhani,sans-serif`;
-  const tw=ctx.measureText(txt).width;
-  let lx=x+11*SC,ly=y-11*SC;
-  if(lx+tw>W-4)lx=x-tw-11*SC;     /* 右边缘翻转 */
-  if(ly<fontPx+4)ly=y+fontPx+11*SC; /* 顶部翻转 */
-  ctx.lineWidth=3.5*SC;ctx.strokeStyle='rgba(2,6,15,.92)';
-  ctx.strokeText(txt,lx,ly);
-  ctx.fillStyle=st.color;ctx.fillText(txt,lx,ly);
+}
+
+/* 文字标签布局: 两站过近时强制 ISS 在上/CSS 在下错位, 文字直接贴图标, 无描边背景。
+   由 render() 先算好两站坐标再画, 解决重叠覆盖问题。 */
+function placeLabels(iy, ty){
+  /* iy/ty: {st, x, y} ISS 与 天宫 的屏幕坐标 */
+  const layout = [];
+  for(const it of [iy, ty]){
+    const st = it.st, x = it.x, y = it.y;
+    if(!st.geo) { layout.push(null); continue; }
+    const txt=`${st.label} · ${Math.round(st.geo.alt)}km · ${st.geo.vel.toFixed(2)}km/s`;
+    const fontPx=Math.max(14, 3.0*SC);
+    ctx.font=`700 ${fontPx}px Rajdhani,sans-serif`;
+    const tw=ctx.measureText(txt).width;
+    layout.push({st, x, y, txt, fontPx, tw});
+  }
+  const issP = layout[0], tgP = layout[1];
+  if(issP && tgP){
+    const dx = issP.x - tgP.x, dy = issP.y - tgP.y;
+    const too_close = Math.abs(dx) < Math.max(issP.tw, tgP.tw) + 8*SC && Math.abs(dy) < (issP.fontPx + tgP.fontPx)*1.4;
+    if(too_close){
+      /* 强制 ISS 文字往上,CSS 文字往下 (完成错位) */
+      issP.ly = issP.y - issP.fontPx*1.4 - 2*SC;
+      tgP.ly  = tgP.y  + tgP.fontPx*1.6 + 2*SC;
+      /* 水平依然沿用原本 ISS 右/CSS 左 */
+      issP.lx = issP.x + 4*SC;
+      tgP.lx  = tgP.x  - 4*SC - tgP.tw;
+      /* 边缘翻转 */
+      if(issP.lx + issP.tw > W - 2*SC) issP.lx = issP.x - 4*SC - issP.tw;
+      if(tgP.lx < 2*SC) tgP.lx = tgP.x + 4*SC;
+      if(issP.ly < issP.fontPx) issP.ly = issP.y + issP.fontPx*1.1;
+      if(tgP.ly > H - 2*SC) tgP.ly = tgP.y - tgP.fontPx*0.35;
+    } else {
+      /* 不近 — 默认 ISS 右上 / CSS 左下 */
+      issP.lx = issP.x + 4*SC;
+      issP.ly = issP.y - issP.fontPx*0.35;
+      tgP.lx  = tgP.x  - 4*SC - tgP.tw;
+      tgP.ly  = tgP.y  + tgP.fontPx*1.1;
+      if(issP.lx + issP.tw > W - 2*SC) issP.lx = issP.x - 4*SC - issP.tw;
+      if(tgP.lx < 2*SC) tgP.lx = tgP.x + 4*SC;
+      if(issP.ly < issP.fontPx) issP.ly = issP.y + issP.fontPx*1.1;
+      if(tgP.ly > H - 2*SC) tgP.ly = tgP.y - tgP.fontPx*0.35;
+    }
+  } else {
+    /* 只有一站可见: 简单贴右侧 */
+    for(const p of layout){
+      if(!p) continue;
+      p.lx = p.x + 4*SC;
+      p.ly = p.y - p.fontPx*0.35;
+      if(p.lx + p.tw > W - 2*SC) p.lx = p.x - 4*SC - p.tw;
+      if(p.ly < p.fontPx) p.ly = p.y + p.fontPx*1.1;
+      if(p.ly > H - 2*SC) p.ly = p.y - p.fontPx*0.35;
+    }
+  }
+  return layout;
+}
+
+function drawText(p){
+  if(!p) return;
+  ctx.shadowColor='rgba(2,6,15,.72)';ctx.shadowBlur=2*SC;ctx.shadowOffsetY=0.5*SC;
+  ctx.fillStyle=p.st.color;
+  ctx.fillText(p.txt, p.lx, p.ly);
+  ctx.shadowBlur=0;ctx.shadowOffsetY=0;
 }
 function render(t){
   try{
@@ -820,6 +871,11 @@ function render(t){
       ctx.drawImage(nightCv,0,0);
       drawTrack(STATIONS.iss);drawTrack(STATIONS.tg);
       drawMarker(STATIONS.iss,t||0);drawMarker(STATIONS.tg,t||0);
+      /* 文字标签 — placeLabels 一次性算两站坐标防重叠, drawText 实际绘制 (无描边背景) */
+      const ix = STATIONS.iss.geo?X(STATIONS.iss.geo.lon):0, iy2 = STATIONS.iss.geo?Y(STATIONS.iss.geo.lat):0;
+      const tx = STATIONS.tg.geo?X(STATIONS.tg.geo.lon):0,  ty2 = STATIONS.tg.geo?Y(STATIONS.tg.geo.lat):0;
+      const labels = placeLabels({st:STATIONS.iss,x:ix,y:iy2}, {st:STATIONS.tg,x:tx,y:ty2});
+      for(const p of labels) drawText(p);
     }
   }catch(e){
     if(!render.err){render.err=1;console.error('渲染异常',e);}
