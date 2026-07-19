@@ -464,45 +464,54 @@ function resize(){
 }
 
 /* 真实地球底图绘制:
-   优先绘制 NASA Blue Marble 等距圆柱贴图,
-   在贴图加载完成前后绘制经纬网以便降级使用。
-   叠加极地冰盖、陆地湖泊海岸线等不再额外绘制(贴图已包含)。 */
+   NASA Blue Marble 贴图作"纹理+颜色细节"用,不覆盖鲜艳底色 —
+   先用矢量风格铺一层鲜艳海洋青蓝 + 鲜绿大陆(同回退路径),
+   再用 'overlay' 模式叠加贴图(提亮饱和后),贴图只"上色"不改色,
+   最后叠加蓝/绿 overlay 高光与边缘晕,最终是 vivid earth 不是暗色贴图。 */
 function drawBase(){
   const c=baseCv.getContext('2d');
   c.clearRect(0,0,W,H);
-  /* 贴图优先 — 进一步提高饱和度、亮度,使海洋更蓝、陆地更绿 */
   if(bmLoaded&&blueMarble.width>1){
-    c.drawImage(blueMarble,0,0,W,H);
+    /* (1) 先铺鲜艳矢量色底 — 同回退分支,保证贴图加载前后颜色一致 */
+    drawVectorBase(c);
+    /* (2) 贴图以 overlay 叠加 — 把地表纹理(Topography)染到鲜艳底色上,
+       overlay:暗部加深、亮部提亮,原 Blue Marble 的海洋偏暗会被鲜艳蓝底盖过 */
     c.save();
-    /* (1) 加 saturate 1.8 + brightness 1.2 强提亮与饱和,海洋蓝亮、陆地鲜绿 */
-    c.filter='saturate(1.8) brightness(1.18)';
-    c.globalAlpha=.55;
-    c.drawImage(blueMarble,0,0,W,H);
-    c.filter='none';
-    c.globalAlpha=1;
-    /* (2) 蓝色加成:overlay 时影响中亮度像素,海洋更蓝 */
     c.globalCompositeOperation='overlay';
-    c.fillStyle='rgba(70,140,220,.18)';
-    c.fillRect(0,0,W,H);
-    /* (3) 绿色加成:overlay 时强调陆地,陆地更绿 */
-    c.fillStyle='rgba(90,180,90,.18)';
-    c.fillRect(0,0,W,H);
-    c.globalCompositeOperation='source-over';
-    /* (4) 顶层亮度叠加:lighter 加色,整体亮又不失饱和度 */
-    c.globalCompositeOperation='lighter';
-    c.fillStyle='rgba(20,40,90,.06)';c.fillRect(0,0,W,H);
-    c.globalCompositeOperation='source-over';
-    /* (5) 边缘高光蓝晕 */
-    const grd=c.createLinearGradient(0,0,0,H);
-    grd.addColorStop(0,'rgba(150,200,255,.18)');
-    grd.addColorStop(.5,'rgba(180,255,200,.06)');
-    grd.addColorStop(1,'rgba(150,200,255,.18)');
-    c.fillStyle=grd;c.fillRect(0,0,W,H);
+    c.filter='saturate(1.8) brightness(1.25)';
+    c.globalAlpha=.8;
+    c.drawImage(blueMarble,0,0,W,H);
     c.restore();
+    /* (3) 饱和度强叠加再把陆地鲜绿、海洋鲜蓝再推一次,
+       'soft-light' 不像 overlay 那么激进,贴图纹理保留 */
+    c.save();
+    c.globalCompositeOperation='soft-light';
+    c.fillStyle='rgba(70,160,225,.18)';
+    c.fillRect(0,0,W,H);
+    c.fillStyle='rgba(90,200,110,.12)';
+    c.fillRect(0,0,W,H);
+    c.restore();
+    /* (4) 顶层亮度加成:lighter 轻微加色,把整体亮度提上去 */
+    c.save();
+    c.globalCompositeOperation='lighter';
+    c.fillStyle='rgba(20,60,110,.06)';c.fillRect(0,0,W,H);
+    c.restore();
+    /* (5) 边缘高光蓝晕:上下极地附近带冷色高光 */
+    const grd=c.createLinearGradient(0,0,0,H);
+    grd.addColorStop(0,'rgba(150,200,255,.16)');
+    grd.addColorStop(.5,'rgba(180,255,200,.04)');
+    grd.addColorStop(1,'rgba(150,200,255,.16)');
+    c.fillStyle=grd;c.fillRect(0,0,W,H);
+    c.globalCompositeOperation='source-over';
     drawGrid(c,/*overlay*/true);
     return;
   }
-  /* 矢量回退:更鲜艳的真实海洋青蓝 + 鲜绿大陆 */
+  /* 矢量回退(无贴图或贴图加载中): 更鲜艳的真实海洋青蓝 + 鲜绿大陆 */
+  drawVectorBase(c);
+}
+/* 抽取出来的矢量基色绘制 — 贴图分支与无贴图分支共用同一组鲜艳色,
+   保证贴图加载完成前后不会出现颜色跳变(用户原先看到的"一瞬鲜然后变暗") */
+function drawVectorBase(c){
   const sea=c.createLinearGradient(0,0,0,H);
   sea.addColorStop(0,'#1d6dbf');    /* 北极近青蓝 */
   sea.addColorStop(.3,'#0c84cd');   /* 高纬海面 */
