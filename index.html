@@ -764,14 +764,15 @@ function drawMarker(st,t){
   /* 投影 glow — 阴影大小也用 SC */
   ctx.shadowColor=st.color;ctx.shadowBlur=9*SC;
   /* 真实外形 — 图标 scale 用 SC,放大让 OBS 观众也明显可见 */
-  stationIcon(st,x,y,2.8*SC);
+  stationIcon(st,x,y,Math.max(1.8,1.8*SC));
   ctx.shadowBlur=0;
   /* 高亮中心白点便于视觉锁定 */
   ctx.fillStyle='#fff';
   ctx.beginPath();ctx.arc(x,y,1.6*SC,0,7);ctx.fill();
-  /* 标签 — 含高度与速度, 大幅放大让 OBS 观众看得清 */
+  /* 标签 — 含高度与速度。
+     3% 地图宽度, 下限 14px */
   const txt=`${st.label} · ${Math.round(st.geo.alt)}km · ${st.geo.vel.toFixed(2)}km/s`;
-  const fontPx=5.5*SC;            /* 5.5% 地图宽度 = OBS 1080 下 ~59px,手机 1125 下 ~62px */
+  const fontPx=Math.max(14, 3.0*SC);  /* 3% 地图宽度, 下限 14px */
   ctx.font=`700 ${fontPx}px Rajdhani,sans-serif`;
   const tw=ctx.measureText(txt).width;
   let lx=x+11*SC,ly=y-11*SC;
