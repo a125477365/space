@@ -426,7 +426,7 @@ function sunPos(date){
    若贴图加载失败则回退到本文档内绘制的真实风格地图
    (海洋深蓝渐变 + 真实海岸线 GeoJSON 着色 + 极地冰盖 + 经纬网)。 */
 const canvas=$('map'),ctx=canvas.getContext('2d');
-let W=0,H=0,DPR=1,SC=1,worldGeo=null;   /* SC = CSS 像素基准,绘制相对画面大小 (DPR 无关, OBS/浏览器同尺寸) */
+let W=0,H=0,DPR=1,SC=1,worldGeo=null;   /* SC = CSS 像素基准,绘制相对地图面大小 (DPR 无关) */
 const baseCv=document.createElement('canvas'),nightCv=document.createElement('canvas');
 const X=lon=>(lon+180)/360*W, Y=lat=>(90-lat)/180*H;
 
@@ -460,10 +460,10 @@ function resize(){
   canvas.width=W;canvas.height=H;
   baseCv.width=W;baseCv.height=H;
   nightCv.width=W;nightCv.height=H;
-  /* SC = 画面 CSS 像素基准 — 所有"相对画面"比例的图标/文字以此为乘数,
-     不再依赖 DPR。OBS 内 DPR=1 但 CSS 像素 = 物理像素 = 画面尺寸,
-     浏览器内 DPR=2 但 CSS 像素仍是画面尺寸; 两边都得到同一个 SC。 */
-  SC=Math.max(r.width,r.height)/100;   /* 1 SC = 1% 画面尺寸(物理或 CSS 像素) */
+  /* SC = CSS 像素基准 — 取地图宽度的 1/100,这样地图越宽字号/图标越大。
+     早期用 max(w,h) 导致 9:16 竖屏 (宽<高) 基准偏小、文字看着小。
+     改用 width 让所有相对画面元素在 OBS/浏览器都跟地图宽度等比放大。 */
+  SC=r.width/100;          /* 1 SC = 1% 地图 CSS 宽度 */
   drawBase();drawNight();
 }
 
@@ -749,26 +749,26 @@ function drawMarker(st,t){
   const p=(t%2200)/2200;
   /* 脉冲圈 — DPR 无关化,用 SC 等比放大 */
   ctx.strokeStyle=st.color;ctx.globalAlpha=(1-p)*.55;
-  ctx.lineWidth=1.8*SC;
-  ctx.beginPath();ctx.arc(x,y,(5+14*p)*SC,0,7);ctx.stroke();
+  ctx.lineWidth=2.4*SC;
+  ctx.beginPath();ctx.arc(x,y,(6+18*p)*SC,0,7);ctx.stroke();
   ctx.globalAlpha=1;
   /* 投影 glow — 阴影大小也用 SC */
-  ctx.shadowColor=st.color;ctx.shadowBlur=8*SC;
-  /* 真实外形 — 图形基准 scale 已含 SC,双重放大让 OBS 观众也明显可见 */
-  stationIcon(st,x,y,2.6*SC);
+  ctx.shadowColor=st.color;ctx.shadowBlur=9*SC;
+  /* 真实外形 — 图标 scale 用 SC,放大让 OBS 观众也明显可见 */
+  stationIcon(st,x,y,2.8*SC);
   ctx.shadowBlur=0;
   /* 高亮中心白点便于视觉锁定 */
   ctx.fillStyle='#fff';
-  ctx.beginPath();ctx.arc(x,y,1.4*SC,0,7);ctx.fill();
+  ctx.beginPath();ctx.arc(x,y,1.6*SC,0,7);ctx.fill();
   /* 标签 — 含高度与速度, 大幅放大让 OBS 观众看得清 */
   const txt=`${st.label} · ${Math.round(st.geo.alt)}km · ${st.geo.vel.toFixed(2)}km/s`;
-  const fontPx=4.0*SC;                                              /* 从 10*DPR 提到 4%画面 ≈ OBS/浏览器都 ~2.5x 旧尺寸 */
+  const fontPx=5.5*SC;            /* 5.5% 地图宽度 = OBS 1080 下 ~59px,手机 1125 下 ~62px */
   ctx.font=`700 ${fontPx}px Rajdhani,sans-serif`;
   const tw=ctx.measureText(txt).width;
-  let lx=x+10*SC,ly=y-8*SC;
-  if(lx+tw>W-4)lx=x-tw-10*SC;                                       /* 右边缘翻转 */
-  if(ly<fontPx+4)ly=y+fontPx+8*SC;                                  /* 顶部翻转 */
-  ctx.lineWidth=3.2*SC;ctx.strokeStyle='rgba(2,6,15,.92)';
+  let lx=x+11*SC,ly=y-11*SC;
+  if(lx+tw>W-4)lx=x-tw-11*SC;     /* 右边缘翻转 */
+  if(ly<fontPx+4)ly=y+fontPx+11*SC; /* 顶部翻转 */
+  ctx.lineWidth=3.5*SC;ctx.strokeStyle='rgba(2,6,15,.92)';
   ctx.strokeText(txt,lx,ly);
   ctx.fillStyle=st.color;ctx.fillText(txt,lx,ly);
 }
