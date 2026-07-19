@@ -321,7 +321,7 @@ h1 small{
           <em id="iss-count">--</em>
         </div>
         <div class="crew-bg">
-          <img class="crew-bg-static" id="iss-bg-static" alt="ISS over Earth's limb" src="assets/iss-silhouette.jpg">
+          <img class="crew-bg-static" id="iss-bg-static" alt="ISS over Earth's limb" src="/space/assets/iss-silhouette.jpg">
           <div class="crew-bg-dim"></div>
           <div class="crew" id="iss-crew"><div class="crew-loading">正在获取乘组名单…</div></div>
         </div>
@@ -334,7 +334,7 @@ h1 small{
           <em id="tg-count">--</em>
         </div>
         <div class="crew-bg">
-          <img class="crew-bg-static" id="tg-bg-static" alt="天宫空间站官方高清图" src="assets/tiangong-spacewalk.jpg">
+          <img class="crew-bg-static" id="tg-bg-static" alt="天宫空间站官方高清图" src="/space/assets/tiangong-spacewalk.jpg">
           <div class="crew-bg-dim"></div>
           <div class="crew" id="tg-crew"><div class="crew-loading">正在获取乘组名单…</div></div>
         </div>
@@ -1000,15 +1000,15 @@ async function loadCrew(){
    黑夜  -> iss-night.jpg        (Expedition 72 城市灯+极光+大气辉光)
    晨昏  -> iss-terminator.jpg   (Moon over Earth limb, 空间站晨昏带)
    主备援: iss-silhouette.jpg    (STS111 剪影 — 任何状态图加载失败时兜底) */
-const ISS_BG={day:'assets/iss-zenith.jpg',night:'assets/iss-night.jpg',dusk:'assets/iss-terminator.jpg'};
-const ISS_BG_FALLBACK='assets/iss-silhouette.jpg';
+const ISS_BG={day:'/space/assets/iss-zenith.jpg',night:'/space/assets/iss-night.jpg',dusk:'/space/assets/iss-terminator.jpg'};
+const ISS_BG_FALLBACK='/space/assets/iss-silhouette.jpg';
 /* 天宫本地静图 — 按昼夜状态切换:
    白天  -> tiangong-spacewalk.jpg (神舟十五号出舱作业, 已有)
    黑夜  -> iss-night.jpg          (ISS 轨道夜景, 代表近地轨道黑夜视觉, 与 ISS 共享)
    晨昏  -> tg-terminator.jpg      (Expedition 74 ISS 进入中国日落, 空间站日落轨道)
    主备援: tiangong-rear.jpg       (天宫后视, 已有) */
-const TG_BG ={day:'assets/tiangong-spacewalk.jpg',night:'assets/iss-night.jpg',dusk:'assets/tg-terminator.jpg'};
-const TG_BG_FALLBACK='assets/tiangong-rear.jpg';
+const TG_BG ={day:'/space/assets/tiangong-spacewalk.jpg',night:'/space/assets/iss-night.jpg',dusk:'/space/assets/tg-terminator.jpg'};
+const TG_BG_FALLBACK='/space/assets/tiangong-rear.jpg';
 
 /* 判定空间站当前所处昼夜状态:
    根据空间站当前经纬度(lat,lon)与太阳直射点(sunLat,sunLon)的球面夹角,
