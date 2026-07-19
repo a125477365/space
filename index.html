@@ -80,7 +80,7 @@ header{
 
 /* 自动刷新倒计时角标 — 浮在 stage 右下角, 显示距下次自动 reload 的剩余秒数。
    到 0 时 location.reload() 重新拉取 GitHub Pages 上的最新 index.html。
-   默认 10 分钟; URL 参数 ?reload=N 可调 (N 分钟, 0=关闭)。 */
+   默认 60 分钟 (1 小时); URL 参数 ?reload=N 可调 (N 分钟, 0=关闭)。 */
 #reload-badge{
   position:absolute;right:calc(var(--u)*2.4);bottom:calc(var(--u)*2.4);
   z-index:10;
@@ -1083,13 +1083,13 @@ setCrewBg('crew-block-iss', ISS_BG.day, ISS_BG_FALLBACK);
 setCrewBg('crew-block-tg',  TG_BG.day,  TG_BG_FALLBACK);
 /* initAOS 已下线 */
 
-/* 自动刷新倒计时 — 默认 10 分钟检查一次 GitHub Pages 上是否有新版 index.html。
+/* 自动刷新倒计时 — 默认 60 分钟检查一次 GitHub Pages 上是否有新版 index.html。
    URL 参数 ?reload=N 可调 (N 分钟, 0=关闭)。到 0 自动 location.reload()。
    仅做整页 reload — 静态图/位置数据本来已经每秒在跑, 这里只是为了拿到我新推的代码改动。 */
 (function setupAutoReload(){
   try{
     const m = new URL(location.href).searchParams.get('reload');
-    const minutes = m===null ? 10 : parseFloat(m);
+    const minutes = m===null ? 60 : parseFloat(m);
     const el = document.getElementById('reload-badge');
     const num = document.getElementById('reloadNum');
     if(!el || !num){ return; }
