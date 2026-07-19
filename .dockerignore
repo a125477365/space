@@ -1,0 +1,16 @@
+# 数据源 CDN 缓存与隐私
+# 构建缓存
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# 编辑器/系统
+.DS_Store
+.git/
+.gitignore
+.idea/
+.vscode/
+.claude/
+*.bak
+*.tmp
+~$*

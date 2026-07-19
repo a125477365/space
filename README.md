@@ -12,12 +12,13 @@
 - **晨昏线**: 实时太阳直射点 + 夜半球阴影叠加。
 - **乘组卡片**: 多行网格同时显示在轨宇航员(按 ISS/CSS 自动分组),含头像 / 名字 / 在轨天数。
 - **空地通话音频窗口**:
+  - 打开即默认显示 YouTube 视频
   - 可隐藏 YouTube 视频画面(`仅音频`)
-  - 可自由拖拽到屏幕任意位置
-  - 右下角拖拽缩放,或浏览器原生 `resize`
+  - 可自由拖拽到屏幕任意位置(工具栏拖拽)
+  - 右下角拖拽缩放,自定义手柄
   - 可切换圆角 / 方形 / 圆形三种形状
-  - 收起到右下角后,通过恢复按钮调回
-- **遥测状态**: NASA ISSLive Lightstreamer 实时遥测(AOS / LOS 事件)。
+  - 收起到右下角后,通过「🔊 恢复」按钮调回
+- **空地通信板**:仅保留"空地通话音频"按钮,不再显示 NASA Lightstreamer 遥测面板与日志。
 
 ## 数据来源
 
@@ -35,6 +36,39 @@
 ## 使用方法
 
 直接用浏览器打开 `index.html` 即可,无需构建。建议在 OBS 浏览器源中加入并设为竖屏分辨率(720×1280)。
+
+## 部署方式
+
+### 方式 1: 直接打开(开发/本地)
+1. 双击 `index.html` 或拖入浏览器即可。
+2. OBS Browser Source:URL 填 `file:///path/to/index.html`。
+
+### 方式 2: 本地静态服务器
+```bash
+cd space
+python3 -m http.server 8080
+# 浏览器访问 http://localhost:8080/
+```
+
+### 方式 3: Docker 容器(推荐用于 OBS/直播联网访问)
+```bash
+cd space
+docker compose up -d --build
+# 访问 http://localhost:8080/
+# OBS Browser Source: http://<本机IP>:8080/
+# 停止: docker compose down
+```
+
+> 说明:容器化部署对本应用的意义在于 –
+> • 把单文件 HTML/web 字体/(跨域贴图)在本机用 nginx 提供为通用 HTTP URL,
+>   这样 OBS 浏览器源、手机直播间、远程观众都可通过同一地址访问;
+> • 同时 `file://` 在 OBS 中有时会受沙盒限制(如 CORS、iframe 等),
+>   走 HTTP 可以完全规避;
+> • nginx:alpine 镜像极小(<10 MB),资源占用远低于 node 静态服务器。
+
+### 方式 4: 推送到 GitHub Pages
+由于仓库已是 `a125477365/space`,可在 GitHub repo `Settings → Pages → Branch: main /root` 启用 Pages,即得
+`https://a125477365.github.io/space/`。
 
 ## 免责
 
