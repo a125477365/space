@@ -810,7 +810,7 @@ function placeLabels(iy, ty){
     const st = it.st, x = it.x, y = it.y;
     if(!st.geo) { layout.push(null); continue; }
     const txt=`${st.label} · ${Math.round(st.geo.alt)}km · ${st.geo.vel.toFixed(2)}km/s`;
-    const fontPx=Math.max(14, 3.0*SC);
+    const fontPx=Math.max(14, 4.0*SC);
     ctx.font=`700 ${fontPx}px Rajdhani,sans-serif`;
     const tw=ctx.measureText(txt).width;
     layout.push({st, x, y, txt, fontPx, tw});
