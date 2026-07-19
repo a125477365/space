@@ -23,6 +23,12 @@
   --land:#3a6b8a;  /* 真实地球配色:海陆适配 */
   --num:'Rajdhani',-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
   --sans:-apple-system,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
+  /* 动态基准单位 — JS 监听 resize 把 --u = stage width / 100 px。
+     所有页面字号/padding 用 calc(var(--u)*N) 替代 cqw/cqh,
+     完全不依赖 container query, OBS 旧 CEF 与浏览器一致渲染。
+     9:16 锁定布局下 stage height = stage width * 16/9,
+     故 cqh 数值 * 16/9 = 等效 cqw 数值, 统一用 var(--u)。 */
+  --u:3.5px;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%}
@@ -37,7 +43,6 @@ body{
 #stage{
   width:min(100vw,calc(100dvh * 9 / 16));
   height:100dvh;
-  container-type:size;
   position:relative;
   background:var(--bg);
   display:flex;flex-direction:column;
@@ -61,112 +66,112 @@ body{
 /* ── 顶栏 ─────────────────────────── */
 header{
   display:flex;align-items:center;justify-content:space-between;
-  padding:1.6cqh 3.4cqw 1.2cqh;
+  padding:calc(var(--u)*2.8444) calc(var(--u)*3.4) calc(var(--u)*2.1333);
   border-bottom:1px solid var(--line);
   flex:0 0 auto;
 }
-.brand{display:flex;align-items:center;gap:2.4cqw}
+.brand{display:flex;align-items:center;gap:calc(var(--u)*2.4)}
 .live-dot{
-  width:2.6cqw;height:2.6cqw;border-radius:50%;
-  background:var(--live);box-shadow:0 0 2cqw var(--live);
+  width:calc(var(--u)*2.6);height:calc(var(--u)*2.6);border-radius:50%;
+  background:var(--live);box-shadow:0 0 calc(var(--u)*2) var(--live);
   animation:blink 1.6s ease-in-out infinite;
 }
 @keyframes blink{50%{opacity:.25}}
-h1{font-size:4.4cqw;font-weight:700;letter-spacing:.14em}
+h1{font-size:calc(var(--u)*4.4);font-weight:700;letter-spacing:.14em}
 h1 small{
-  display:block;font-family:var(--num);font-weight:600;font-size:2.5cqw;
-  letter-spacing:.34em;color:var(--dim);margin-top:.3cqh;
+  display:block;font-family:var(--num);font-weight:600;font-size:calc(var(--u)*2.5);
+  letter-spacing:.34em;color:var(--dim);margin-top:calc(var(--u)*0.5333);
 }
 .clocks{text-align:right;font-family:var(--num);line-height:1.25}
-.clocks b{font-size:3.6cqw;font-weight:700;font-variant-numeric:tabular-nums}
-.clocks span{font-size:2.4cqw;color:var(--dim);letter-spacing:.12em;margin-right:1.2cqw}
+.clocks b{font-size:calc(var(--u)*3.6);font-weight:700;font-variant-numeric:tabular-nums}
+.clocks span{font-size:calc(var(--u)*2.4);color:var(--dim);letter-spacing:.12em;margin-right:calc(var(--u)*1.2)}
 
 /* ── 地图 ─────────────────────────── */
 #mapWrap{
   position:relative;flex:0 0 auto;
-  height:50cqw; /* 等距圆柱 2:1 */
+  height:calc(var(--u)*50); /* 等距圆柱 2:1 */
   border-bottom:1px solid var(--line);
   background:#040a1c;
 }
 #map{position:absolute;inset:0;width:100%;height:100%;display:block}
 .map-hud{
-  position:absolute;top:1.4cqw;right:1.6cqw;
+  position:absolute;top:calc(var(--u)*1.4);right:calc(var(--u)*1.6);
   background:rgba(4,9,24,.78);
   border:1px solid var(--line);
-  border-radius:1.6cqw;
-  padding:1.4cqw 2cqw;
-  font-family:var(--num);font-size:2.7cqw;font-weight:600;
+  border-radius:calc(var(--u)*1.6);
+  padding:calc(var(--u)*1.4) calc(var(--u)*2);
+  font-family:var(--num);font-size:calc(var(--u)*2.7);font-weight:600;
   font-variant-numeric:tabular-nums;line-height:1.65;
   backdrop-filter:blur(4px);
 }
-.hud-row{display:flex;align-items:center;gap:1.4cqw;white-space:nowrap}
-.hud-row i{width:1.8cqw;height:1.8cqw;border-radius:50%;background:var(--c);box-shadow:0 0 1.4cqw var(--c)}
-.hud-row em{font-style:normal;color:var(--text);min-width:8cqw}
+.hud-row{display:flex;align-items:center;gap:calc(var(--u)*1.4);white-space:nowrap}
+.hud-row i{width:calc(var(--u)*1.8);height:calc(var(--u)*1.8);border-radius:50%;background:var(--c);box-shadow:0 0 calc(var(--u)*1.4) var(--c)}
+.hud-row em{font-style:normal;color:var(--text);min-width:calc(var(--u)*8)}
 .hud-row span{color:var(--dim)}
 .map-legend{
-  position:absolute;left:1.6cqw;bottom:1.4cqw;
-  font-size:2.3cqw;color:var(--dim);letter-spacing:.06em;
-  background:rgba(4,9,24,.6);border-radius:1.2cqw;padding:.8cqw 1.6cqw;
+  position:absolute;left:calc(var(--u)*1.6);bottom:calc(var(--u)*1.4);
+  font-size:calc(var(--u)*2.3);color:var(--dim);letter-spacing:.06em;
+  background:rgba(4,9,24,.6);border-radius:calc(var(--u)*1.2);padding:calc(var(--u)*0.8) calc(var(--u)*1.6);
 }
 
 /* ── 空间站卡片(单卡 ISS + 天宫 分组,填满剩余高度) ── */
 #cards{
   flex:1 1 auto;          /* 撑满 stage 剩余空间 */
   min-height:0;
-  display:flex;flex-direction:column;gap:1.2cqh;
-  padding:.4cqh 2.6cqw;
+  display:flex;flex-direction:column;gap:calc(var(--u)*2.1333);
+  padding:calc(var(--u)*0.7111) calc(var(--u)*2.6);
 }
 .scard{
   flex:1 1 auto;min-height:0;
   background:var(--panel);
   border:1px solid var(--line);
-  border-radius:2cqw;
-  padding:.9cqh 2.8cqw;
+  border-radius:calc(var(--u)*2);
+  padding:calc(var(--u)*1.6) calc(var(--u)*2.8);
   display:flex;flex-direction:column;
   overflow:hidden;
 }
-.scard-head{display:flex;align-items:baseline;gap:2cqw;flex:0 0 auto}
-.scard-head h2{font-size:3.4cqw;font-weight:700;letter-spacing:.06em}
-.scard-head small{font-family:var(--num);font-weight:600;font-size:2.3cqw;color:var(--dim);letter-spacing:.1em}
+.scard-head{display:flex;align-items:baseline;gap:calc(var(--u)*2);flex:0 0 auto}
+.scard-head h2{font-size:calc(var(--u)*3.4);font-weight:700;letter-spacing:.06em}
+.scard-head small{font-family:var(--num);font-weight:600;font-size:calc(var(--u)*2.3);color:var(--dim);letter-spacing:.1em}
 .badge{
-  margin-left:auto;font-size:2.2cqw;letter-spacing:.2em;
+  margin-left:auto;font-size:calc(var(--u)*2.2);letter-spacing:.2em;
   color:var(--live);border:1px solid var(--live);
-  border-radius:99px;padding:.2cqh 2cqw;
+  border-radius:99px;padding:calc(var(--u)*0.3556) calc(var(--u)*2);
 }
 /* ── 分组背景(ISS YouTube 嵌入 / 天宫高清照片) ── */
 .crew-block{
   flex:1 1 0;
   min-height:0;
-  margin-top:.9cqh;
+  margin-top:calc(var(--u)*1.6);
   border-top:1px dashed var(--line);
-  padding-top:.5cqh;
+  padding-top:calc(var(--u)*0.8889);
   display:flex;flex-direction:column;
   position:relative;
 }
-.crew-block:first-of-type{margin-top:.6cqh}
+.crew-block:first-of-type{margin-top:calc(var(--u)*1.0667)}
 .crew-block-title{
-  display:flex;align-items:center;gap:1.2cqw;
-  font-family:var(--num);font-weight:700;font-size:2.6cqw;
+  display:flex;align-items:center;gap:calc(var(--u)*1.2);
+  font-family:var(--num);font-weight:700;font-size:calc(var(--u)*2.6);
   letter-spacing:.10em;color:var(--text);
-  margin-bottom:.4cqh;
+  margin-bottom:calc(var(--u)*0.7111);
   flex:0 0 auto;
   z-index:2;            /* 防止被背景遮挡 */
   text-shadow:0 1px 3px rgba(2,6,15,.8);
 }
 .crew-block-title i{
-  width:1.6cqw;height:1.6cqw;border-radius:50%;background:var(--c);
-  box-shadow:0 0 1cqw var(--c);
+  width:calc(var(--u)*1.6);height:calc(var(--u)*1.6);border-radius:50%;background:var(--c);
+  box-shadow:0 0 calc(var(--u)*1) var(--c);
 }
 .crew-block-title em{
   font-style:normal;color:var(--c);
-  font-family:var(--num);font-weight:700;font-size:2.6cqw;
+  font-family:var(--num);font-weight:700;font-size:calc(var(--u)*2.6);
   flex-shrink:0;
 }
 /* 经纬度/高度/速度 meta 文字(在标题里,名字与人数之间) */
 .crew-block-meta{
-  font-family:var(--num);font-weight:500;font-size:2.1cqw;
+  font-family:var(--num);font-weight:500;font-size:calc(var(--u)*2.1);
   color:var(--dim);letter-spacing:.02em;
-  margin:0 .8cqw 0 auto;  /* 把 em (人数) 推到最右,自己靠在名称之后 */
+  margin:0 calc(var(--u)*0.8) 0 auto;  /* 把 em (人数) 推到最右,自己靠在名称之后 */
   text-shadow:0 1px 2px rgba(2,6,15,.7);
 }
 /* 背景层 */
@@ -174,7 +179,7 @@ h1 small{
   flex:1 1 auto;
   min-height:0;
   position:relative;
-  border-radius:1.5cqw;
+  border-radius:calc(var(--u)*1.5);
   overflow:hidden;
   background:#000;
 }
@@ -203,11 +208,11 @@ h1 small{
   z-index:3;
   height:100%;
   margin:0;
-  padding:.6cqw;
+  padding:calc(var(--u)*0.6);
   display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(8.5cqw,1fr));
+  grid-template-columns:repeat(auto-fill,minmax(calc(var(--u)*8.5),1fr));
   grid-auto-rows:min-content;
-  gap:.8cqw .5cqw;
+  gap:calc(var(--u)*0.8) calc(var(--u)*0.5);
   align-content:start;   /* 左上对齐 — 头像从左上角依次排列 */
   justify-items:start;   /* 每个 chip 在自己格子里也左对齐 */
   overflow:auto;
@@ -215,30 +220,30 @@ h1 small{
 }
 .crew::-webkit-scrollbar{display:none}
 .crew-loading,.crew-error{
-  font-size:2.4cqw;color:#eaf3ff;align-self:center;justify-self:center;
+  font-size:calc(var(--u)*2.4);color:#eaf3ff;align-self:center;justify-self:center;
   grid-column:1/-1;
   text-shadow:0 1px 3px rgba(2,6,15,.9);
-  background:rgba(2,6,15,.55);padding:.5cqh 1.5cqw;border-radius:1.2cqw;
+  background:rgba(2,6,15,.55);padding:calc(var(--u)*0.8889) calc(var(--u)*1.5);border-radius:calc(var(--u)*1.2);
 }
 .crew-error{color:var(--warn)}
 .astro{
   width:100%;text-align:center;min-width:0;
   background:rgba(2,6,15,.18);
   backdrop-filter:blur(1px);
-  border-radius:1.2cqw;
-  padding:.4cqw .2cqw;
+  border-radius:calc(var(--u)*1.2);
+  padding:calc(var(--u)*0.4) calc(var(--u)*0.2);
 }
 .avatar{
-  width:6.4cqw;height:6.4cqw;margin:0 auto;border-radius:50%;
+  width:calc(var(--u)*6.4);height:calc(var(--u)*6.4);margin:0 auto;border-radius:50%;
   border:1.2px solid var(--c);overflow:hidden;
   background:rgba(255,255,255,.20);
   display:flex;align-items:center;justify-content:center;
-  box-shadow:0 2px 4cqw rgba(2,6,15,.5);
+  box-shadow:0 2px calc(var(--u)*4) rgba(2,6,15,.5);
 }
 .avatar img{width:100%;height:100%;object-fit:cover;object-position:center top}
-.avatar .initials{font-family:var(--num);font-weight:700;font-size:2.4cqw;color:var(--c)}
-.aname{font-size:1.9cqw;margin-top:.25cqh;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff;text-shadow:0 1px 2px rgba(2,6,15,.9)}
-.adays{font-family:var(--num);font-weight:600;font-size:1.8cqw;color:#e8eefc;margin-top:.05cqh;white-space:nowrap;text-shadow:0 1px 2px rgba(2,6,15,.9)}
+.avatar .initials{font-family:var(--num);font-weight:700;font-size:calc(var(--u)*2.4);color:var(--c)}
+.aname{font-size:calc(var(--u)*1.9);margin-top:calc(var(--u)*0.4444);line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff;text-shadow:0 1px 2px rgba(2,6,15,.9)}
+.adays{font-family:var(--num);font-weight:600;font-size:calc(var(--u)*1.8);color:#e8eefc;margin-top:calc(var(--u)*0.0889);white-space:nowrap;text-shadow:0 1px 2px rgba(2,6,15,.9)}
 .stats,.meta-line{display:none !important}   /* 不再使用,统一关闭以便旧样式不影响 */
 
 /* ── 空地通信板块已下线:youtube 现直接嵌入 ISS 卡片背景 ─ */
@@ -247,8 +252,8 @@ h1 small{
 /* ── 底部滚动条 ────────────────────── */
 #ticker{
   flex:0 0 auto;border-top:1px solid var(--line);
-  padding:.7cqh 0;overflow:hidden;white-space:nowrap;
-  font-family:var(--num);font-weight:600;font-size:2.5cqw;color:var(--dim);
+  padding:calc(var(--u)*1.2444) 0;overflow:hidden;white-space:nowrap;
+  font-family:var(--num);font-weight:600;font-size:calc(var(--u)*2.5);color:var(--dim);
   letter-spacing:.08em;
 }
 #ticker .inner{display:inline-block;padding-left:100%;animation:tick 36s linear infinite}
@@ -464,6 +469,10 @@ function resize(){
      早期用 max(w,h) 导致 9:16 竖屏 (宽<高) 基准偏小、文字看着小。
      改用 width 让所有相对画面元素在 OBS/浏览器都跟地图宽度等比放大。 */
   SC=r.width/100;          /* 1 SC = 1% 地图 CSS 宽度 */
+  /* 同步设置 CSS 全局基准单位 --u (= SC px),替代原 cqw/cqh。
+     所有 CSS 字号/padding 用 calc(var(--u)*N) 完全不依赖 container query,
+     OBS 旧 CEF 也兼容。设计比例与原 cqw 数值完全一致。 */
+  document.documentElement.style.setProperty('--u', SC.toFixed(2)+'px');
   drawBase();drawNight();
 }
 
