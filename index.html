@@ -426,7 +426,7 @@ function sunPos(date){
    若贴图加载失败则回退到本文档内绘制的真实风格地图
    (海洋深蓝渐变 + 真实海岸线 GeoJSON 着色 + 极地冰盖 + 经纬网)。 */
 const canvas=$('map'),ctx=canvas.getContext('2d');
-let W=0,H=0,DPR=1,worldGeo=null;
+let W=0,H=0,DPR=1,SC=1,worldGeo=null;   /* SC = CSS 像素基准,绘制相对画面大小 (DPR 无关, OBS/浏览器同尺寸) */
 const baseCv=document.createElement('canvas'),nightCv=document.createElement('canvas');
 const X=lon=>(lon+180)/360*W, Y=lat=>(90-lat)/180*H;
 
@@ -460,6 +460,10 @@ function resize(){
   canvas.width=W;canvas.height=H;
   baseCv.width=W;baseCv.height=H;
   nightCv.width=W;nightCv.height=H;
+  /* SC = 画面 CSS 像素基准 — 所有"相对画面"比例的图标/文字以此为乘数,
+     不再依赖 DPR。OBS 内 DPR=1 但 CSS 像素 = 物理像素 = 画面尺寸,
+     浏览器内 DPR=2 但 CSS 像素仍是画面尺寸; 两边都得到同一个 SC。 */
+  SC=Math.max(r.width,r.height)/100;   /* 1 SC = 1% 画面尺寸(物理或 CSS 像素) */
   drawBase();drawNight();
 }
 
@@ -637,9 +641,9 @@ function drawTrack(st){
   }
   /* 绘制 past (虚线) */
   ctx.strokeStyle=st.color;
-  ctx.globalAlpha=.35;
-  ctx.lineWidth=1.3*DPR;
-  ctx.setLineDash([3*DPR,4*DPR]);
+  ctx.globalAlpha=.4;
+  ctx.lineWidth=1.0*SC;                                  /* SC 替代 DPR — OBS 内不变细 */
+  ctx.setLineDash([3*SC,4*SC]);
   for(const seg of paths.past){
     ctx.beginPath();
     seg.forEach((p,i)=>{const x=X(p.lon),y=Y(p.lat);i?ctx.lineTo(x,y):ctx.moveTo(x,y);});
@@ -647,7 +651,7 @@ function drawTrack(st){
   }
   /* 绘制 future (实线) */
   ctx.globalAlpha=.9;
-  ctx.lineWidth=1.8*DPR;
+  ctx.lineWidth=1.4*SC;                                  /* SC 替代 DPR */
   ctx.setLineDash([]);
   for(const seg of paths.future){
     ctx.beginPath();
@@ -656,60 +660,84 @@ function drawTrack(st){
   }
   ctx.setLineDash([]);ctx.globalAlpha=1;
 }
-/* 空间站标志符号:用真实外形替代小亮点
-   ISS:桁架+四对太阳能板+中央加压舱+散热板
-   CSS (天宫):T 字主体+三对太阳能板+附加舱
-   形状保持以 (x,y) 为中心,与速度方向无关的简化正视图。 */
+/* 空间站标志符号:真实外形,以 (x,y) 为中心绘制定向正视图。
+   s 是基准单位(像素),与速度方向无关。drawMarker 调用时传放大后 s 值。
+   ISS:长桁架 + 中央加压舱(6 舱段) + 4 对矩形太阳能板 + 散热板
+   天宫 CSS:T 字核心舱 + 左右实验舱 + 顶部对接舱 + 4 大对日太阳能翼 */
 function stationIcon(st,x,y,scale){
-  const s=scale*DPR;
+  const s=scale;          /* drawMarker 已乘过 SC,此处不再加 DPR — DPR 无关化 */
   ctx.save();
   ctx.translate(x,y);
   if(st.key==='iss'){
-    /* 桁架主梁(横向) */
-    ctx.fillStyle='#cdd6e0';
-    ctx.fillRect(-2.4*s,-0.35*s,4.8*s,0.7*s);
-    /* 居中加压舱 */
-    ctx.fillStyle='#e3eaf2';
-    ctx.fillRect(-0.7*s,-0.6*s,1.4*s,1.2*s);
-    /* 四对太阳能板(两两对称) */
-    ctx.fillStyle='#1b2b4a';
-    for(const sx of [-1,1]){
-      /* 左/右两块 */
-      for(const ox of [-2.0,-1.2,1.2,2.0]){
-        const px=ox*s;
-        ctx.fillRect(px-0.36*s,-1.8*s,0.72*s,1.5*s);
-        ctx.fillRect(px-0.36*s, 0.3*s,0.72*s,1.5*s);
-        /* 中央杆 */
-        ctx.fillStyle='#3d5278';
-        ctx.fillRect(px-0.04*s,-1.8*s,0.08*s,3.6*s);
-        ctx.fillStyle='#1b2b4a';
-      }
-      void sx;
-    }
-    /* 散热板(琥珀色细条) */
-    ctx.fillStyle='#7fd8ff';
-    ctx.fillRect(-2.4*s,-0.1*s,4.8*s,0.2*s);
-  }else if(st.key==='tg'){
-    /* 天宫:核心舱居中+两侧节点舱,顶部对日翼 */
-    /* 核心舱 */
-    ctx.fillStyle='#d8e0ea';
-    ctx.fillRect(-0.55*s,-0.55*s,1.1*s,1.1*s);
-    /* 左右实验舱(天和二侧) */
-    ctx.fillStyle='#c5cdd6';
-    ctx.fillRect(-1.6*s,-0.35*s,1.0*s,0.7*s);
-    ctx.fillRect( 0.6*s,-0.35*s,1.0*s,0.7*s);
-    /* 对接舱(顶部小段) */
-    ctx.fillStyle='#a9b4be';
-    ctx.fillRect(-0.18*s,-1.1*s,0.36*s,0.55*s);
-    /* 太阳能板:上下各三片 */
-    ctx.fillStyle='#26365a';
-    for(const ox of [-1.1,0,1.1]){
+    /* ISS 真实外形 (顶视,桁架水平方向):
+       长桁架主梁 + 中央加压舱(串联 6 舱段) + 4 对大型矩形太阳能板 + 散热板(青色) */
+    /* 桁架主梁 — 更长更细 */
+    ctx.fillStyle='#c8d2dc';
+    ctx.fillRect(-3.6*s,-0.22*s,7.2*s,0.44*s);
+    /* 中央加压舱 — 长条圆柱,中央有节点 */
+    ctx.fillStyle='#e6edf4';
+    ctx.fillRect(-1.1*s,-0.55*s,2.2*s,1.1*s);
+    ctx.strokeStyle='#a3b1bf';ctx.lineWidth=0.08*s;
+    ctx.strokeRect(-1.1*s,-0.55*s,2.2*s,1.1*s);
+    /* 4 对大型太阳能板 — 桁架两侧各 4 块,上下对称 */
+    ctx.fillStyle='#1c2b4a';
+    for(const ox of [-3.0,-2.0,2.0,3.0]){
       const px=ox*s;
-      ctx.fillRect(px-0.5*s,-2.5*s,1.0*s,1.0*s);
-      ctx.fillRect(px-0.5*s, 1.5*s,1.0*s,1.0*s);
-      ctx.fillStyle='#3d5278';
-      ctx.fillRect(px-0.04*s,-2.5*s,0.08*s,5.0*s);
-      ctx.fillStyle='#26365a';
+      /* 上翼 */
+      ctx.fillRect(px-0.42*s,-2.6*s,0.84*s,1.85*s);
+      /* 下翼 */
+      ctx.fillRect(px-0.42*s, 0.75*s,0.84*s,1.85*s);
+      /* 翼中央杆(纵向) */
+      ctx.fillStyle='#465d86';
+      ctx.fillRect(px-0.05*s,-2.6*s,0.1*s,3.7*s);
+      /* 横向格栅线 — 增加真实感 */
+      ctx.strokeStyle='#324363';ctx.lineWidth=0.04*s;
+      for(let yy=-2.2;yy<2.2;yy+=0.32){
+        ctx.beginPath();
+        ctx.moveTo(px-0.42*s,yy*s);ctx.lineTo(px+0.42*s,yy*s);
+        ctx.stroke();
+      }
+      ctx.fillStyle='#1c2b4a';
+    }
+    /* 散热板(青色横条) — 桁架中央上下方 */
+    ctx.fillStyle='#7fd8ff';ctx.globalAlpha=.85;
+    ctx.fillRect(-3.6*s,-0.1*s,7.2*s,0.2*s);
+    ctx.globalAlpha=1;
+  }else if(st.key==='tg'){
+    /* 天宫 CSS 真实外形 (顶视,T 字布局):
+       水平主梁两端各 2 对大太阳能翼 · 中央三角核心舱 · 末端对接舱/飞船 */
+    /* 主水平梁 */
+    ctx.fillStyle='#c2cbd4';
+    ctx.fillRect(-2.4*s,-0.18*s,4.8*s,0.36*s);
+    /* 核心舱(天和) — 中央圆柱 */
+    ctx.fillStyle='#e6edf3';
+    ctx.fillRect(-0.5*s,-0.5*s,1.0*s,1.0*s);
+    ctx.strokeStyle='#a3b1bf';ctx.lineWidth=0.06*s;
+    ctx.strokeRect(-0.5*s,-0.5*s,1.0*s,1.0*s);
+    /* 问天、梦天实验舱 — 核心舱左右两侧 */
+    ctx.fillStyle='#cbd3dc';
+    ctx.fillRect(-1.85*s,-0.32*s,1.05*s,0.64*s);
+    ctx.fillRect( 0.8 *s,-0.32*s,1.05*s,0.64*s);
+    /* 顶部对接舱 — 待对接飞船位置 */
+    ctx.fillStyle='#a9b4be';
+    ctx.fillRect(-0.18*s,-1.25*s,0.36*s,0.7*s);
+    /* 4 对大型太阳能翼 — 左右两端各 2 对(4 翼) */
+    ctx.fillStyle='#22365b';
+    for(const ox of [-2.0,-1.3,1.3,2.0]){
+      const px=ox*s;
+      ctx.fillRect(px-0.42*s,-2.7*s,0.84*s,1.6*s);
+      ctx.fillRect(px-0.42*s, 1.1*s,0.84*s,1.6*s);
+      /* 中央杆 */
+      ctx.fillStyle='#43598a';
+      ctx.fillRect(px-0.05*s,-2.7*s,0.1*s,3.7*s);
+      /* 横向格栅线 */
+      ctx.strokeStyle='#34466f';ctx.lineWidth=0.04*s;
+      for(let yy=-2.3;yy<2.3;yy+=0.3){
+        ctx.beginPath();
+        ctx.moveTo(px-0.42*s,yy*s);ctx.lineTo(px+0.42*s,yy*s);
+        ctx.stroke();
+      }
+      ctx.fillStyle='#22365b';
     }
   }
   ctx.restore();
@@ -719,27 +747,28 @@ function drawMarker(st,t){
   if(!st.geo)return;
   const x=X(st.geo.lon),y=Y(st.geo.lat);
   const p=(t%2200)/2200;
-  /* 脉冲圈 */
-  ctx.strokeStyle=st.color;ctx.globalAlpha=(1-p)*.5;
-  ctx.lineWidth=1.4*DPR;
-  ctx.beginPath();ctx.arc(x,y,(4+11*p)*DPR,0,7);ctx.stroke();
+  /* 脉冲圈 — DPR 无关化,用 SC 等比放大 */
+  ctx.strokeStyle=st.color;ctx.globalAlpha=(1-p)*.55;
+  ctx.lineWidth=1.8*SC;
+  ctx.beginPath();ctx.arc(x,y,(5+14*p)*SC,0,7);ctx.stroke();
   ctx.globalAlpha=1;
-  /* 投影 glow */
-  ctx.shadowColor=st.color;ctx.shadowBlur=6*DPR;
-  /* 实际外形 */
-  stationIcon(st,x,y,1.8);
+  /* 投影 glow — 阴影大小也用 SC */
+  ctx.shadowColor=st.color;ctx.shadowBlur=8*SC;
+  /* 真实外形 — 图形基准 scale 已含 SC,双重放大让 OBS 观众也明显可见 */
+  stationIcon(st,x,y,2.6*SC);
   ctx.shadowBlur=0;
   /* 高亮中心白点便于视觉锁定 */
   ctx.fillStyle='#fff';
-  ctx.beginPath();ctx.arc(x,y,1.0*DPR,0,7);ctx.fill();
-  /* 标签 — 含高度与速度 */
+  ctx.beginPath();ctx.arc(x,y,1.4*SC,0,7);ctx.fill();
+  /* 标签 — 含高度与速度, 大幅放大让 OBS 观众看得清 */
   const txt=`${st.label} · ${Math.round(st.geo.alt)}km · ${st.geo.vel.toFixed(2)}km/s`;
-  ctx.font=`600 ${10*DPR}px Rajdhani,sans-serif`;
+  const fontPx=4.0*SC;                                              /* 从 10*DPR 提到 4%画面 ≈ OBS/浏览器都 ~2.5x 旧尺寸 */
+  ctx.font=`700 ${fontPx}px Rajdhani,sans-serif`;
   const tw=ctx.measureText(txt).width;
-  let lx=x+10*DPR,ly=y-7*DPR;
-  if(lx+tw>W-4)lx=x-tw-10*DPR;
-  if(ly<12*DPR)ly=y+14*DPR;
-  ctx.lineWidth=3*DPR;ctx.strokeStyle='rgba(2,6,15,.92)';
+  let lx=x+10*SC,ly=y-8*SC;
+  if(lx+tw>W-4)lx=x-tw-10*SC;                                       /* 右边缘翻转 */
+  if(ly<fontPx+4)ly=y+fontPx+8*SC;                                  /* 顶部翻转 */
+  ctx.lineWidth=3.2*SC;ctx.strokeStyle='rgba(2,6,15,.92)';
   ctx.strokeText(txt,lx,ly);
   ctx.fillStyle=st.color;ctx.fillText(txt,lx,ly);
 }
