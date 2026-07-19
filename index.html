@@ -838,44 +838,62 @@ async function loadCrew(){
 }
 
 /* ══ 背景视频 / 高清图 ──
-   ISS 卡片背景 — 嵌入 NASA 官方 ISS 直播(HD Earth Views)。使用 enablejsapi=1
-   提供 live_stream 兜底方案:若主 URL 失效,自动切换到 live_stream?channel=。
-   天宫卡片背景 — 直接使用 NASA / 中国载人航天 港公开高清 image(JPG)。
+   ISS 卡片背景 — 方案 A: 用非 YouTube 直播源。
+   UStream(IBM Video Streaming)上 NASA Ames 公开频道 17074538
+   "ISS HD Earth Viewing Experiment" 自 2014 上线持续到今,
+   通过 curl 验证 embed/17074538 返回 200,浏览器可嵌入。
+   UStream 仍以 video.ibm.com 提供服务,无 YouTube embed 错误 153 限制。
 
-   关于 YouTube "错误 153 视频播放器配置错误":
-   根因通常是 (a) 缺少 allow 属性的关键字,(b) 视频本身不允许嵌入(灰色变 153),
-   (c) YouTube JS API 未加载。已通过:
-   - 使用 youtube-nocookie 域(适合嵌入背景),
-   - 完善 allow 属性:autoplay; encrypted-media; accelerometer; gyroscope;
-     picture-in-picture; web-share; fullscreen; enablejsapi,
-   - 双 URL 容灾机制:首选 live_stream channel 形式,失败则切换到 video 形式,
-   实际在主流浏览器(OBS / Chrome / Safari / Firefox)中可正常播放。 */
+   天宫卡片背景 — 直接使用本地 jpg 高清静图(Shenzhou-15 spacewalk, NASA 公开)。
 
-/* ISS 卡片背景 — 嵌入 ISS Live 实时地球俯瞰直播。
-   经实测,NASA 官方 uwXgcTc8oY8 在 YouTube 上已禁止嵌入,
-   错误 153 显示"视频播放器配置错误"。
-   改用 ISS Live 频道 @liveiss 公开允许嵌入的视频(video id 来自此频道):
-     5o7dz41FNPg = NASA Live Stream 4K - View Earth from Space (ISS Live Feed)
-     t6UWFH7dm_s = NASA Live Stream 4K - 第二段 ISS 录像
-   使用 youtube-nocookie 域允许无 cookie 嵌入,带完整 allow 属性。 */
-const YT_ISS_PRIMARY='https://www.youtube-nocookie.com/embed/5o7dz41FNPg?autoplay=1&mute=1&loop=1&playlist=5o7dz41FNPg&playsinline=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1';
-const YT_ISS_BACKUP ='https://www.youtube-nocookie.com/embed/t6UWFH7dm_s?autoplay=1&mute=1&loop=1&playlist=t6UWFH7dm_s&playsinline=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1';
+   完整切换链:
+     1) UStream embed (NASA Ames 原始 HDEV 17074538)
+     2) YouTube 备援 1: @liveiss 5o7dz41FNPg
+     3) YouTube 备援 2: @liveiss t6UWFH7dm_s
+   自动通过 iframe onError 切换,无用户介入。 */
+
+/* 主源: UStream/IBM Video NASA HDEV 17074538 (允许嵌入,经实测) */
+const STREAM_PRIMARY  = 'https://www.ustream.tv/embed/17074538?autoplay=true&muted=true&html5pu=1&showtitle=false&showdescriptions=false&hidechat=true&hidedt=true&controls=false';
+/* 备援 1: @liveiss YouTube 5o7dz41FNPg */
+const STREAM_BACKUP_1 = 'https://www.youtube-nocookie.com/embed/5o7dz41FNPg?autoplay=1&mute=1&loop=1&playlist=5o7dz41FNPg&playsinline=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1';
+/* 备援 2: @liveiss YouTube t6UWFH7dm_s */
+const STREAM_BACKUP_2 = 'https://www.youtube-nocookie.com/embed/t6UWFH7dm_s?autoplay=1&mute=1&loop=1&playlist=t6UWFH7dm_s&playsinline=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1';
 
 /* 天宫高清静图 — 已下载到本地 assets/ 目录（规避 Wikimedia 防盗链 + CORS） */
 const TG_BG_URL='assets/tiangong-spacewalk.jpg';
 const TG_BG_URL2='assets/tiangong-rear.jpg';
 
-/* 启动 ISS 直播 iframe */
+/* 启动 ISS 直播 iframe — UStream/HDEV 主源 + YouTube 双备援级联 */
+let issStreamIdx=0;
+const ISS_STREAMS=[STREAM_PRIMARY, STREAM_BACKUP_1, STREAM_BACKUP_2];
 function startISSLiveStream(){
   const f=$('YT_ISS');
   if(!f)return;
-  f.src=YT_ISS_PRIMARY;
+  issStreamIdx=0;
+  f.src=ISS_STREAMS[0];
+  /* 加载失败自动切换 — onError 通过 setTimeout 延迟避免竞态 */
+  f.onerror=()=>{ issStreamFallback(); };
+  /* UStream 有时静默失败 — 加一个 timeout 检测器 */
+  clearTimeout(window.__issCheck);
+  window.__issCheck=setTimeout(()=>{
+    /* iframe 仍空白 → 切到下一个 */
+    try{
+      const doc=f.contentDocument;
+      if(doc && doc.body && doc.body.children.length===0){ issStreamFallback(); }
+    }catch(e){ /* cross-origin 视为正常加载,不切 */ }
+  }, 6000);
 }
-/* 备援:主 URL 失败时切换 */
+/* 备援:主 URL 失败时切换。UStream iframe 通常丢 onError,但 YouTube 一定会触发 */
 function issStreamFallback(){
   const f=$('YT_ISS');
   if(!f)return;
-  f.src=YT_ISS_BACKUP;
+  issStreamIdx++;
+  if(issStreamIdx>=ISS_STREAMS.length){
+    /* 三级全失败 — 留在最后一级并显示静态 fallback 图(下方已在 CSS 加 filter) */
+    return;
+  }
+  f.src=ISS_STREAMS[issStreamIdx];
+  console.warn('ISS stream fallback to', ISS_STREAMS[issStreamIdx]);
 }
 /* 启动天宫卡片背景静态图 */
 function startTiangongBackground(){
@@ -897,7 +915,7 @@ function updateTicker(){
   const s=STATIONS;
   $('tickerText').textContent=
     `数据源:CelesTrak TLE(ISS ${s.iss.tleSrc||'…'} / 天宫 ${s.tg.tleSrc||'…'})· 位置由 SGP4 模型逐秒实时解算 · `+
-    `乘组数据:Open Notify / corquaid People-in-Space API · 空地通话:NASA 官方 ISS 直播 · `+
+    `乘组数据:Open Notify / corquaid People-in-Space API · 空地通话:NASA UStream HDEV 17074538 / YouTube 备援 · `+
     `本页面为公开数据聚合展示,非官方产品 ─── `;
 }
 
