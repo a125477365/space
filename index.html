@@ -765,6 +765,9 @@ function tick(){
     const meta=$('crew-'+k+'-meta');
     if(meta)meta.textContent=`${fmtLat(g.lat)} ${fmtLon(g.lon)} · ${Math.round(g.alt)}km · ${g.vel.toFixed(2)}km/s`;
   }
+  /* 每秒检查空间站昼夜状态,变化时切对应背景图 */
+  updateCrewBg('crew-block-iss','iss',ISS_BG,ISS_BG_FALLBACK);
+  updateCrewBg('crew-block-tg', 'tg', TG_BG,  TG_BG_FALLBACK);
 }
 setInterval(tick,1000);
 
@@ -859,23 +862,69 @@ async function loadCrew(){
 
    两图均加 onError 备援逻辑,主图挂了自动切换到备援,备援挂了停留显示。 */
 
-/* ISS 本地静图 — 主图 STS111 飞越剪影 + 备援 STS098 Zenith view */
-const ISS_BG_URL ='assets/iss-silhouette.jpg';
-const ISS_BG_URL2='assets/iss-zenith.jpg';
-/* 天宫本地静图 — 主图 神舟十五号出舱 + 备援 天宫后视 */
-const TG_BG_URL ='assets/tiangong-spacewalk.jpg';
-const TG_BG_URL2='assets/tiangong-rear.jpg';
+/* ISS 本地静图 — 按空间站当前所处昼夜状态切换:
+   白天  -> iss-zenith.jpg       (STS098 Zenith view, 太空亮色俯瞰 ISS)
+   黑夜  -> iss-night.jpg        (Expedition 72 城市灯+极光+大气辉光)
+   晨昏  -> iss-terminator.jpg   (Moon over Earth limb, 空间站晨昏带)
+   主备援: iss-silhouette.jpg    (STS111 剪影 — 任何状态图加载失败时兜底) */
+const ISS_BG={day:'assets/iss-zenith.jpg',night:'assets/iss-night.jpg',dusk:'assets/iss-terminator.jpg'};
+const ISS_BG_FALLBACK='assets/iss-silhouette.jpg';
+/* 天宫本地静图 — 按昼夜状态切换:
+   白天  -> tiangong-spacewalk.jpg (神舟十五号出舱作业, 已有)
+   黑夜  -> iss-night.jpg          (ISS 轨道夜景, 代表近地轨道黑夜视觉, 与 ISS 共享)
+   晨昏  -> tg-terminator.jpg      (Expedition 74 ISS 进入中国日落, 空间站日落轨道)
+   主备援: tiangong-rear.jpg       (天宫后视, 已有) */
+const TG_BG ={day:'assets/tiangong-spacewalk.jpg',night:'assets/iss-night.jpg',dusk:'assets/tg-terminator.jpg'};
+const TG_BG_FALLBACK='assets/tiangong-rear.jpg';
 
-/* 启动 ISS / 天宫 卡片背景静态图(主图 + 备援级联) */
-function loadCrewBg(blockId, mainUrl, backupUrl){
+/* 判定空间站当前所处昼夜状态:
+   根据空间站当前经纬度(lat,lon)与太阳直射点(sunLat,sunLon)的球面夹角,
+   z < 75°  -> 白天 (空间站位于太阳直射点 75° 球面距离内,昼半球中央)
+   z > 105° -> 黑夜 (空间站位于夜半球中央)
+   中间     -> 晨昏 (75°-105° 之间, 接近晨昏线)
+   边界缓冲 5° 避免状态在临界点反复横跳导致图片闪烁切换。 */
+function dayNightPhase(lat,lon,sun){
+  /* 球面两点夹角(zenith angle) 公式: cos z = sin a sin b + cos a cos b cos Δλ */
+  const dz=(lat-sun.lat)*Math.PI/180;
+  const dl=(lon-sun.lon)*Math.PI/180;
+  const cz=Math.sin(lat*Math.PI/180)*Math.sin(sun.lat*Math.PI/180)+
+            Math.cos(lat*Math.PI/180)*Math.cos(sun.lat*Math.PI/180)*Math.cos(dl);
+  const z=Math.acos(Math.max(-1,Math.min(1,cz)))*180/Math.PI;
+  if(z<75) return 'day';
+  if(z>105) return 'night';
+  return 'dusk';
+}
+
+/* 启动 ISS / 天宫 卡片背景静态图(主图 + 备援级联)。
+   改为三套图按昼夜状态动态切换 — 当空间站从白天移到黑夜时,
+   背景图平滑切到对应状态图; 每张状态图都有自己的备援兜底。 */
+const crewBgState={};   /* {iss:{phase:prevUrl,tried:[]}, tg:{...}} */
+function setCrewBg(blockId, url, fallback){
   const img=document.querySelector(`#${blockId} .crew-bg-static`);
   if(!img)return;
+  if(img.dataset.cur===url && img.dataset.loaded==='1') return;  /* 同图不必重设 */
+  img.dataset.cur=url;
+  img.dataset.loaded='0';
   img.onerror=()=>{
     if(img.dataset.fallback==='1'){return;}
     img.dataset.fallback='1';
-    img.src=backupUrl;       /* 主图加载失败 -> 切到备援 */
+    img.dataset.loaded='1';
+    img.src=fallback;
   };
-  img.src=mainUrl;
+  img.onload=()=>{img.dataset.loaded='1';img.dataset.fallback='0';};
+  img.src=url;
+}
+/* 每次解算位置时调用:根据 st.lat/st.lon 与 sun 决定 phase,
+   若 phase 变化则切到对应三状态图(始终带各自备援) */
+function updateCrewBg(blockId, stationId, bgSet, bgFallback){
+  const st=STATIONS[stationId];
+  if(!st || typeof st.lat!=='number' || typeof st.lon!=='number')return;
+  const sun=sunPos(new Date());
+  const phase=dayNightPhase(st.lat,st.lon,sun);
+  const prev=crewBgState[blockId];
+  if(prev && prev.phase===phase)return;   /* 同状态不切换 */
+  crewBgState[blockId]={phase};
+  setCrewBg(blockId, bgSet[phase]||bgSet.day, bgFallback);
 }
 
 /* ══ 底部滚动条 ═════════════════════════ */
@@ -895,9 +944,10 @@ loadTLEs();
 setInterval(loadTLEs,3*3600*1000);   /* TLE 每 3 小时刷新 */
 loadCrew();
 setInterval(loadCrew,3600*1000);     /* 乘组每小时刷新 */
-/* 加载 ISS / 天宫 卡片本地高清背景图 */
-loadCrewBg('crew-block-iss', ISS_BG_URL, ISS_BG_URL2);
-loadCrewBg('crew-block-tg',  TG_BG_URL,  TG_BG_URL2);
+/* 加载 ISS / 天宫 卡片本地高清背景图 — 首次用 day 状态,
+   之后 updateCrewBg 在 tick 中根据空间站昼夜状态动态切换 */
+setCrewBg('crew-block-iss', ISS_BG.day, ISS_BG_FALLBACK);
+setCrewBg('crew-block-tg',  TG_BG.day,  TG_BG_FALLBACK);
 /* initAOS 已下线 */
 tick();
 requestAnimationFrame(render);
