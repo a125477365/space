@@ -77,6 +77,30 @@ header{
   animation:blink 1.6s ease-in-out infinite;
 }
 @keyframes blink{50%{opacity:.25}}
+
+/* 自动刷新倒计时角标 — 浮在 stage 右下角, 显示距下次自动 reload 的剩余秒数。
+   到 0 时 location.reload() 重新拉取 GitHub Pages 上的最新 index.html。
+   默认 10 分钟; URL 参数 ?reload=N 可调 (N 分钟, 0=关闭)。 */
+#reload-badge{
+  position:absolute;right:calc(var(--u)*2.4);bottom:calc(var(--u)*2.4);
+  z-index:10;
+  font-family:var(--num);font-weight:600;
+  font-size:calc(var(--u)*2.6);line-height:1;
+  color:var(--dim);
+  background:rgba(2,6,15,.55);
+  padding:calc(var(--u)*0.9) calc(var(--u)*1.6);
+  border-radius:calc(var(--u)*1.2);
+  border:1px solid var(--line);
+  letter-spacing:.06em;
+  display:flex;align-items:center;gap:calc(var(--u)*1.0);
+  user-select:none;pointer-events:none;
+  transition:opacity .3s;
+}
+#reload-badge .lbl{font-size:calc(var(--u)*1.8);opacity:.7}
+#reload-badge .num{color:var(--live);font-variant-numeric:tabular-nums;min-width:calc(var(--u)*4.4);text-align:right}
+#reload-badge.warn .num{color:var(--warn)}
+#reload-badge.imminent .num{color:var(--live);animation:blink 1s ease-in-out infinite}
+
 h1{font-size:calc(var(--u)*4.4);font-weight:700;letter-spacing:.14em}
 h1 small{
   display:block;font-family:var(--num);font-weight:600;font-size:calc(var(--u)*2.5);
@@ -319,6 +343,12 @@ h1 small{
   </div>
 
   <div id="ticker"><span class="inner" id="tickerText">正在初始化轨道解算引擎…</span></div>
+
+  <!-- 自动刷新倒计时角标 — 到 0 后 location.reload() 拉取 GitHub Pages 最新版本 -->
+  <div id="reload-badge" title="距下次自动检查更新">
+    <span class="lbl">下次刷新</span>
+    <span class="num" id="reloadNum">--:--</span>
+  </div>
 
 </div>
 
@@ -996,6 +1026,43 @@ setInterval(loadCrew,3600*1000);     /* 乘组每小时刷新 */
 setCrewBg('crew-block-iss', ISS_BG.day, ISS_BG_FALLBACK);
 setCrewBg('crew-block-tg',  TG_BG.day,  TG_BG_FALLBACK);
 /* initAOS 已下线 */
+
+/* 自动刷新倒计时 — 默认 10 分钟检查一次 GitHub Pages 上是否有新版 index.html。
+   URL 参数 ?reload=N 可调 (N 分钟, 0=关闭)。到 0 自动 location.reload()。
+   仅做整页 reload — 静态图/位置数据本来已经每秒在跑, 这里只是为了拿到我新推的代码改动。 */
+(function setupAutoReload(){
+  try{
+    const m = new URL(location.href).searchParams.get('reload');
+    const minutes = m===null ? 10 : parseFloat(m);
+    const el = document.getElementById('reload-badge');
+    const num = document.getElementById('reloadNum');
+    if(!el || !num){ return; }
+    if(!isFinite(minutes) || minutes<=0){
+      el.style.display='none';                       /* 关闭时隐藏角标 */
+      return;
+    }
+    let remain = Math.max(10, Math.round(minutes*60));   /* 秒, 至少 10s */
+    const fmt = s => {
+      const mm = String(Math.floor(s/60)).padStart(2,'0');
+      const ss = String(s%60).padStart(2,'0');
+      return `${mm}:${ss}`;
+    };
+    const tick = () => {
+      num.textContent = fmt(remain);
+      el.classList.toggle('warn', remain<=60 && remain>15);
+      el.classList.toggle('imminent', remain<=15);
+      if(remain<=0){
+        num.textContent = '00:00';
+        try{ location.reload(); }catch(e){ /* reload 被拦截时静默等下次 */ }
+        return;
+      }
+      remain--;
+      setTimeout(tick, 1000);
+    };
+    tick();
+  }catch(e){ /* 静默失败 — 不影响主追踪功能 */ }
+})();
+
 tick();
 requestAnimationFrame(render);
 })();
