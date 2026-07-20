@@ -19,7 +19,7 @@ space 项目后端代理服务 — 方案 B
   GET /space/api/health                             健康检查
 
 启动:
-  python3 proxy_server.py                # 默认 0.0.0.0:8080
+  python3 proxy_server.py                # 默认 0.0.0.0:8081
   python3 proxy_server.py --port 8090     # 自定义端口
 """
 
@@ -345,7 +345,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
 def main():
     parser = argparse.ArgumentParser(description="space proxy server")
     parser.add_argument("--host", default="0.0.0.0", help="bind host (default 0.0.0.0)")
-    parser.add_argument("--port", type=int, default=8080, help="listen port (default 8080)")
+    parser.add_argument("--port", type=int, default=8081, help="listen port (default 8081)")
     args = parser.parse_args()
 
     server = ThreadingHTTPServer((args.host, args.port), ProxyHandler)
