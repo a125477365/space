@@ -90,17 +90,12 @@ def rate_limit_wait(host):
 # 磁盘缓存目录 — 对图片/API 响应做缓存,减少上游请求
 CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
 
-# 分级缓存 TTL (秒) — 不同数据源更新频率差异很大
-#   TLE       : 每天更新一次, 缓存 12 小时 (精度足够实时计算)
-#   乘组名单  : 偶尔变更(出舱/对接), 缓存 1 天
-#   头像      : 几乎不变, 缓存 7 天
-#   蓝地球贴图: 永不变, 缓存 30 天
-#   其他      : 默认 1 天
-CACHE_TTL_DEFAULT = 24 * 3600        # 1 天
-CACHE_TTL_TLE     = 12 * 3600        # 12 小时 (TLE 精度容差)
-CACHE_TTL_CREW    = 24 * 3600        # 1 天 (乘组名单)
-CACHE_TTL_IMAGE   = 7 * 24 * 3600    # 7 天 (头像)
-CACHE_TTL_STATIC  = 30 * 24 * 3600   # 30 天 (地球贴图等静态资源)
+# 分级缓存 TTL (秒) — 全部 1 小时, 平衡实时性与上游限速
+CACHE_TTL_DEFAULT = 3600   # 1 小时
+CACHE_TTL_TLE     = 3600   # 1 小时
+CACHE_TTL_CREW    = 3600   # 1 小时
+CACHE_TTL_IMAGE   = 3600   # 1 小时
+CACHE_TTL_STATIC  = 3600   # 1 小时
 
 def cache_ttl_for(url):
     """根据 URL 选择合适的缓存 TTL."""
