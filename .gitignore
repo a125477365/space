@@ -2,3 +2,8 @@
 cache/
 __pycache__/
 *.pyc
+
+# macOS / IDE 杂项
+.DS_Store
+.claude/
+.vscode/
