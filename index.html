@@ -374,9 +374,27 @@ const FALLBACK_TLE={
 
 /* ══ TLE 获取(多级数据源) ═══════════════ */
 async function jfetch(url,asText){
-  const r=await fetch(url,{cache:'no-store'});
+  const r=await fetch(px(url),{cache:'no-store'});
   if(!r.ok) throw new Error(r.status);
   return asText?r.text():r.json();
+}
+/* ══ 后端代理: 把外网 URL 转成 /space/api/proxy?u=... 形式 ══
+   国内访问 Wikimedia/celestrak/github raw 等需翻墙,改走后端代理。
+   非白名单 URL 原样返回(后端会拒绝,但避免改坏本地路径)。 */
+const PROXY_HOSTS=new Set([
+  'upload.wikimedia.org','celestrak.org','tle.ivanstanojevic.me',
+  'api.wheretheiss.at','raw.githubusercontent.com','corquaid.github.io',
+  'cdn.jsdelivr.net','unpkg.com'
+]);
+function px(url){
+  try{
+    const u=new URL(url);
+    if(!PROXY_HOSTS.has(u.host)) return url;
+    /* 生产环境: /space/api/proxy 由 nginx 转发到后端
+       开发环境: localhost 时指向 8090 端口 */
+    const base = location.hostname==='localhost' ? 'http://localhost:8090' : '';
+    return `${base}/space/api/proxy?u=${encodeURIComponent(url)}`;
+  }catch(e){return url;} /* 相对路径或无效 URL 原样返回 */
 }
 async function fetchTLE(cat){
   try{
@@ -477,7 +495,7 @@ const BM_CANDIDATES=[
 ];
 function tryBM(i){
   if(i>=BM_CANDIDATES.length){bmFailed=true;drawBase();return;}
-  blueMarble.src=BM_CANDIDATES[i];
+  blueMarble.src=px(BM_CANDIDATES[i]);
   blueMarble.onerror=()=>tryBM(i+1);
 }
 tryBM(0);
@@ -935,18 +953,32 @@ function crewChip(p){
     <div class="aname" title="${p.name}${p.spacecraft?' · '+p.spacecraft:''}${p.position?' · '+p.position:''}">${cn||p.name} ${flagEmoji(p.flag_code)}</div>
     <div class="adays">${days!=null?'在轨 '+days+' 天':(p.agency||'')}</div>`;
   if(p.image){
-    const img=new Image();
-    img.referrerPolicy='no-referrer';img.alt=p.name;
-    img.onload=()=>{const av=el.querySelector('.avatar');av.innerHTML='';av.appendChild(img);};
-    img.onerror=()=>{if(img.src!==p.image){img.src=p.image;}}; /* 缩略图失败则回退原图 */
-    img.src=thumbURL(p.image);
+    loadAvatar(el,p.image);
   }
   return el;
 }
-/* 维基共享资源原图动辄数 MB,转成 240px 缩略图 */
+/* 头像加载队列 — 串行请求避免 Wikimedia 429 限速。
+   后端有 7 天磁盘缓存, 首次串行 ~2s/张, 后续全部 HIT 秒返回。 */
+let _avatarQueue=Promise.resolve();
+function loadAvatar(el,origUrl){
+  _avatarQueue=_avatarQueue.then(async()=>{
+    const proxyUrl=px(thumbURL(origUrl));
+    const img=new Image();
+    img.referrerPolicy='no-referrer';img.alt='';
+    /* 等图片加载或失败再请求下一个 (避免并发触发 Wikimedia 429) */
+    await new Promise(r=>{
+      img.onload=()=>{const av=el.querySelector('.avatar');av.innerHTML='';av.appendChild(img);r();};
+      img.onerror=()=>r(); /* 失败保留首字母占位 */
+      img.src=proxyUrl;
+    });
+  }).catch(()=>{});
+}
+/* 维基共享资源缩略图 — 用 250px (Wikimedia 预生成尺寸, 比 120px 更清晰)。
+   测试确认: 120px/250px/500px 可返回 200, 240px/320px 返回 400(未预生成)。 */
 function thumbURL(u){
-  const m=/^https:\/\/upload\.wikimedia\.org\/wikipedia\/commons\/([0-9a-f])\/([0-9a-f]{2})\/([^/]+)$/i.exec(u||'');
-  return m?`https://upload.wikimedia.org/wikipedia/commons/thumb/${m[1]}/${m[2]}/${m[3]}/240px-${m[3]}`:u;
+  const m=/^https:\/\/upload\.wikimedia\.org\/wikipedia\/commons\/([0-9a-f])\/([0-9a-f]{2})\/([^?]+)$/.exec(u);
+  if(m){return `https://upload.wikimedia.org/wikipedia/commons/thumb/${m[1]}/${m[2]}/${m[3]}/250px-${m[3]}`;}
+  return u; /* 非维基 URL 原样返回 */
 }
 function renderCrew(listId,people){
   const box=$(listId);box.innerHTML='';
