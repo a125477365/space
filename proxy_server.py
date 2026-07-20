@@ -89,7 +89,42 @@ def rate_limit_wait(host):
 
 # 磁盘缓存目录 — 对图片/API 响应做缓存,减少上游请求
 CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
-CACHE_TTL = 7 * 24 * 3600  # 7 天 (秒)
+
+# 分级缓存 TTL (秒) — 不同数据源更新频率差异很大
+#   TLE       : 每天更新一次, 缓存 12 小时 (精度足够实时计算)
+#   乘组名单  : 偶尔变更(出舱/对接), 缓存 1 天
+#   头像      : 几乎不变, 缓存 7 天
+#   蓝地球贴图: 永不变, 缓存 30 天
+#   其他      : 默认 1 天
+CACHE_TTL_DEFAULT = 24 * 3600        # 1 天
+CACHE_TTL_TLE     = 12 * 3600        # 12 小时 (TLE 精度容差)
+CACHE_TTL_CREW    = 24 * 3600        # 1 天 (乘组名单)
+CACHE_TTL_IMAGE   = 7 * 24 * 3600    # 7 天 (头像)
+CACHE_TTL_STATIC  = 30 * 24 * 3600   # 30 天 (地球贴图等静态资源)
+
+def cache_ttl_for(url):
+    """根据 URL 选择合适的缓存 TTL."""
+    try:
+        parsed = urllib.parse.urlparse(url)
+        host = parsed.hostname or ""
+        path = parsed.path or ""
+        # TLE 源 — 缓存 12 小时
+        if host == "celestrak.org" or host == "tle.ivanstanojevic.me" \
+           or (host == "api.wheretheiss.at" and "/tles" in path):
+            return CACHE_TTL_TLE
+        # 乘组名单 — 缓存 1 天
+        if "people-in-space" in path or "/astros.json" in path:
+            return CACHE_TTL_CREW
+        # 头像 — 缓存 7 天
+        if host == "upload.wikimedia.org":
+            return CACHE_TTL_IMAGE
+        # 静态资源(地球贴图/world.geo.json/three.js 数据) — 30 天
+        if "earth_atmos" in path or "world.geo.json" in path \
+           or host in ("cdn.jsdelivr.net", "unpkg.com"):
+            return CACHE_TTL_STATIC
+        return CACHE_TTL_DEFAULT
+    except Exception:
+        return CACHE_TTL_DEFAULT
 
 def cache_path(url):
     """URL → 缓存文件路径 (sha256 截短)."""
@@ -103,7 +138,7 @@ def cache_get(url):
     if not os.path.exists(p):
         return None
     mtime = os.path.getmtime(p)
-    if time.time() - mtime > CACHE_TTL:
+    if time.time() - mtime > cache_ttl_for(url):
         return None  # 过期
     meta_p = p + ".meta"
     ct = "application/octet-stream"
@@ -204,7 +239,6 @@ class ProxyHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Cache-Control", "no-store")
         self.send_header("Access-Control-Allow-Origin", "*")
         if extra_headers:
             for k, v in extra_headers.items():
@@ -216,7 +250,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
     def _json(self, status, obj):
         import json
         body = json.dumps(obj).encode("utf-8")
-        self._send(status, "application/json; charset=utf-8", body)
+        self._send(status, "application/json; charset=utf-8", body,
+                   {"Cache-Control": "no-store"})
 
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
@@ -247,7 +282,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header("Content-Type", ct)
                 self.send_header("Content-Length", str(len(body)))
-                self.send_header("Cache-Control", "public, max-age=604800")
+                ttl = cache_ttl_for(target)
+                self.send_header("Cache-Control", f"public, max-age={ttl}")
                 self.send_header("X-Cache", "HIT")
                 self.send_header("Access-Control-Allow-Origin", "*")
                 self.end_headers()
@@ -294,7 +330,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
             if 200 <= status < 300 and len(body) <= MAX_BODY:
                 cache_put(target, body, ct)
                 extra["X-Cache"] = "MISS"
-                extra["Cache-Control"] = "public, max-age=604800"
+                extra["Cache-Control"] = f"public, max-age={cache_ttl_for(target)}"
             self._send(status, ct, body, extra)
             return
 
