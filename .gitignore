@@ -1,10 +1,4 @@
-# Editor / IDE 缓存
-.claude/
-.vscode/
-.idea/
-.DS_Store
-
-# 临时备份
-*.bak
-*.tmp
-~$*
+# 后端代理磁盘缓存 (运行时生成)
+cache/
+__pycache__/
+*.pyc
